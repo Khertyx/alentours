@@ -49,18 +49,25 @@ def fr(v):
 def first(v):
     return (v[0] if v else {}) if isinstance(v, list) else (v or {})
 
-def find_image(o):
-    if isinstance(o, str): return o if IMG.match(o) else ''
+URLRX = re.compile(r'^https?://\S+$')
+def find_image(o, key=''):
+    """Première image trouvée : URL finissant par une extension d'image, sinon URL rangée sous une clé « locator »/« url »."""
+    best = _find(o, strict=True)
+    return best or _find(o, strict=False)
+def _find(o, strict, key=''):
+    if isinstance(o, str):
+        if IMG.match(o): return o
+        if not strict and URLRX.match(o) and re.search(r'locator|url|file', key, re.I) and not re.search(r'licen|creativecommons|rights', o, re.I): return o
+        return ''
     if isinstance(o, dict):
         for k, v in o.items():
-            r = find_image(v)
+            r = _find(v, strict, k)
             if r: return r
     if isinstance(o, list):
         for v in o:
-            r = find_image(v)
+            r = _find(v, strict, key)
             if r: return r
     return ''
-
 def compact(o):
     loc = first(o.get('isLocatedAt'))
     geo = loc.get('geo') or {}
@@ -102,7 +109,22 @@ def fetch_dept(dep, key, today, until):
             c = compact(o)
             if c and c['t']: items.append(c)
         page += 1
-    return items
+    return dedupe(items)
+
+def dedupe(items):
+    """Fusionne les fiches identiques (même titre, même lieu) saisies plusieurs fois : dates réunies."""
+    out = {}
+    for x in items:
+        k = (re.sub(r'[^a-z0-9]', '', x['t'].lower())[:50], round(x['la'], 2), round(x['lo'], 2))
+        if k in out:
+            o = out[k]
+            o['dt'] = sorted({tuple(d) for d in o['dt'] + x['dt']})[:40]
+            o['dt'] = [list(d) for d in o['dt']]
+            for f in ('i', 'u', 'd', 'p'):
+                if not o.get(f) and x.get(f): o[f] = x[f]
+        else:
+            out[k] = x
+    return list(out.values())
 
 def previous(dep):
     if not PREV: return None
@@ -122,9 +144,18 @@ def run(out_dir):
     until = today + datetime.timedelta(days=HORIZON)
     dest = os.path.join(out_dir, 'data', 'events'); os.makedirs(dest, exist_ok=True)
     index = {'updated': today.isoformat(), 'horizon': until.isoformat(), 'source': 'DATAtourisme (Licence Ouverte Etalab)', 'depts': {}}
+    # Ordre : Bretagne et grandes villes, puis les départements absents hier, puis les autres (tout le pays couvert en 2 nuits)
+    order = list(DEPTS)
+    try:
+        with urllib.request.urlopen(urllib.request.Request(f'{PREV}/data/events/index.json', headers={'User-Agent': 'Alentours'}), timeout=20) as r:
+            had = set(json.loads(r.read().decode()).get('depts', {}))
+        missing = [d for d in DEPTS if d not in FIRST and d not in had]
+        order = FIRST + missing + [d for d in DEPTS if d not in FIRST and d not in missing]
+    except Exception:
+        pass
     results, fresh, reused = {}, 0, 0
     with ThreadPoolExecutor(WORKERS) as ex:
-        futs = {ex.submit(fetch_dept, d, key, today, until): d for d in DEPTS}
+        futs = {ex.submit(fetch_dept, d, key, today, until): d for d in order}
         for f in as_completed(futs):
             dep = futs[f]
             try:
