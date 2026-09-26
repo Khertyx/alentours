@@ -1,0 +1,22 @@
+<!-- À coller dans un bloc "HTML personnalisé" d'une page WordPress (ex. khertyx.com/alentours). -->
+<div id="alentours-wrap" style="max-width:1200px;margin:0 auto">
+  <iframe id="alentours-frame"
+          src="https://alentours.khertyx.com/"
+          title="Alentours, que faire autour de vous ?"
+          loading="lazy"
+          allow="geolocation"
+          referrerpolicy="strict-origin-when-cross-origin"
+          style="width:100%;height:1500px;border:0;border-radius:18px;background:#f8f7f2"></iframe>
+  <p style="text-align:center;margin-top:12px">
+    <a href="https://alentours.khertyx.com/" target="_blank" rel="noopener">Ouvrir Alentours en plein écran</a>
+  </p>
+</div>
+<script>
+  // La hauteur de l'iframe suit celle d'Alentours (aucun ascenseur double).
+  window.addEventListener('message', function (e) {
+    if (e.origin !== 'https://alentours.khertyx.com') return;
+    if (!e.data || e.data.type !== 'alentours-height') return;
+    var f = document.getElementById('alentours-frame');
+    if (f && e.data.h > 400) f.style.height = e.data.h + 'px';
+  });
+</script>
