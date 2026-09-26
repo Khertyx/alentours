@@ -184,6 +184,20 @@ def main():
         fetch_datatourisme.run(OUT)
     except Exception as x:
         print('DATAtourisme KO', type(x).__name__, str(x)[:200])
+    # Lieux signalés et confirmés (Airtable « Alentours — Signalements », case Exclure) via un scénario Make en lecture seule
+    excl = []
+    try:
+        req = urllib.request.Request(os.environ.get('EXCLUDE_URL', 'https://hook.eu1.make.com/1gcio6usifrg206htdx4pfymchh1p8xu'), headers=UA)
+        with urllib.request.urlopen(req, timeout=40) as r:
+            txt = r.read().decode('utf-8', 'replace')
+        if txt.startswith('ALENTOURS-EXCLUSIONS'):
+            excl = sorted({l.strip() for l in txt.splitlines()[1:] if l.strip()})
+    except Exception as x:
+        print('Exclusions KO', x)
+    os.makedirs(os.path.join(OUT, 'data'), exist_ok=True)
+    with open(os.path.join(OUT, 'data', 'excluded.json'), 'w', encoding='utf-8') as f:
+        json.dump({'ids': excl}, f)
+    print(len(excl), 'lieux exclus')
     s, e = weekend()
     urls = [SITE + '/', SITE + '/mentions-legales/']
 

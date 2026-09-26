@@ -363,6 +363,13 @@ footer{background:var(--surface2);border-top:1px solid var(--line);padding-block
 .wx .lnk{display:block;margin-top:4px}
 .strip .hint{margin:8px 0 6px}
 .credit{margin:0;font-size:.78rem;color:var(--muted)}
+.rep{border:0;background:none;cursor:pointer;color:var(--muted);font-weight:600;font-size:.82rem}
+.rep:hover{color:var(--bad)}
+.repform{display:flex;flex-direction:column;gap:12px}
+.repform label{font-weight:600;font-size:.9rem}
+.repform select,.repform textarea{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface);font:inherit;color:inherit}
+.repform textarea{min-height:90px;resize:vertical}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--forest);color:#fff;padding:12px 20px;border-radius:14px;box-shadow:var(--shadow);z-index:80;font-weight:600}
 .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -805,6 +812,12 @@ function mergeEvents(a,b){
  return[...seen.values()];
 }
 
+/* ---------- lieux signalés : exclusions confirmées (serveur) + masqués localement ---------- */
+let exclP=null;
+function loadExcl(){if(DT_BASE===null)return Promise.resolve(new Set());if(!exclP)exclP=jfetch(DT_BASE+'/data/excluded.json',null,6000).then(j=>new Set(j.ids||[])).catch(()=>new Set());return exclP}
+const localHidden=new Set(store.get('alentours.hidden',[]));
+const REPORT_URL='https://hook.eu1.make.com/j0kueqg3wvo2xuetbzcng7cc4ngn74db';
+
 /* ---------- recherche ---------- */
 let seq=0;
 async function search(){
@@ -817,7 +830,8 @@ async function search(){
  if(my!==seq)return;$('#go').disabled=false;
  S.wx=wx.status==='fulfilled'?wx.value:[];
  const evs=mergeEvents(ev.status==='fulfilled'?ev.value:[],dt.status==='fulfilled'?dt.value:[]);
- if(ev.status==='fulfilled'||(dt.status==='fulfilled'&&dt.value.length)){S.items=evs.concat(pl.status==='fulfilled'?pl.value:[]);S.mode='ready';S.live=true;S.placesOk=pl.status==='fulfilled'}
+ const excl=await loadExcl();const keep=x=>!excl.has(x.id)&&!localHidden.has(x.id);
+ if(ev.status==='fulfilled'||(dt.status==='fulfilled'&&dt.value.length)){S.items=evs.concat(pl.status==='fulfilled'?pl.value:[]).filter(keep);S.mode='ready';S.live=true;S.placesOk=pl.status==='fulfilled'}
  else{S.items=demoItems(p);S.mode='ready';S.live=false}
  S.aiIdeas=null;S.route=null;render();
  const r=$('#results');if(S.noScroll){S.noScroll=false;return}r.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});
@@ -877,6 +891,7 @@ function card(x,i){
   <div class="foot"><span class="price${x.price===0?' free':''}">${esc(x.priceLabel)}</span>
    ${sb}
    <a class="lnk" href="${nav}" target="_blank" rel="noopener">Itinéraire</a>
+   ${x.kind!=='sample'?`<button type="button" class="lnk rep" data-report="${esc(x.id)}">Signaler</button>`:''}
    ${x.url&&/^https?:/.test(x.url)?`<a class="lnk" href="${esc(x.url)}" target="_blank" rel="noopener">Détails</a>`:''}
    <button type="button" class="fav" data-fav="${esc(x.id)}" aria-pressed="${fav}" aria-label="${fav?'Retirer des':'Ajouter aux'} favoris">${ICON.heart}</button></div>
  </div></article>`}
@@ -1006,6 +1021,31 @@ async function gatherStory(x){
  storyCache.set(x.id,out);return out;
 }
 let lastFocus=null,curStory=null;
+/* ---------- Signaler un lieu ou un événement ---------- */
+function toast(msg){const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3800)}
+function openReport(id,opener){
+ const x=findItem(id);if(!x)return;lastFocus=opener||document.activeElement;curStory=null;
+ const ev=x.kind==='event';
+ const motifs=ev?['Événement annulé','Horaires ou tarif faux','Autre']:['Fermé au public / propriété privée','Définitivement fermé','Horaires ou tarif faux','Autre'];
+ $('#dBody').innerHTML=`<div class="pbody"><h2 id="dTitle">Signaler un problème</h2><p class="src" style="margin:0">${esc(x.title)}${x.city?' · '+esc(x.city):''}</p>
+ <form class="repform" id="repForm"><div><label for="repMotif">Que se passe-t-il ?</label><select id="repMotif">${motifs.map(m=>`<option>${esc(m)}</option>`).join('')}</select></div>
+ <div><label for="repCom">Précisions (facultatif)</label><textarea id="repCom" maxlength="600" placeholder="Ex. : grille fermée, propriété privée, visite seulement en juillet…"></textarea></div>
+ <input type="text" id="repSite" name="site" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+ <p class="hint" style="margin:0">Aucune donnée personnelle n’est demandée. Chaque signalement est vérifié avant de retirer un lieu pour tous.</p>
+ <div class="foot"><button type="submit" class="cta">Envoyer le signalement</button><button type="button" class="cta alt" data-close>Annuler</button></div></form></div>`;
+ $('#drawer').hidden=false;document.body.style.overflow='hidden';$('#repMotif').focus();
+ $('#repForm').addEventListener('submit',e=>{e.preventDefault();
+  if($('#repSite').value)return closeStory();
+  const body=new URLSearchParams({lieu:x.title,motif:$('#repMotif').value,commentaire:$('#repCom').value.trim(),id:x.id,type:x.kind,commune:x.city||x.venue||'',lat:String(x.lat??''),lon:String(x.lon??''),page:location.origin+location.pathname});
+  fetch(REPORT_URL,{method:'POST',mode:'no-cors',body}).catch(()=>{});
+  localHidden.add(x.id);store.set('alentours.hidden',[...localHidden]);
+  S.items=S.items.filter(i=>i.id!==x.id);if(S.route)S.route=null;closeStory();render();
+  toast('Merci, c’est noté. Ce lieu est masqué pour vous et sera vérifié.');
+ });
+}
+$('#results').addEventListener('click',e=>{const b=e.target.closest('[data-report]');if(b)openReport(b.dataset.report,b)});
+$('#dBody').addEventListener('click',e=>{const b=e.target.closest('[data-report2]');if(b)openReport(b.dataset.report2,b)});
+
 function closeStory(){$('#drawer').hidden=true;document.body.style.overflow='';if(lastFocus&&lastFocus.focus)lastFocus.focus()}
 document.addEventListener('click',e=>{if(e.target.closest('[data-close]'))closeStory()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#drawer').hidden)closeStory()});
@@ -1025,7 +1065,7 @@ async function openStory(id,opener){
  if(paras.length)h+=`<div><h4>Le récit</h4><div class="prose">${paras.map(t=>`<p>${esc(t)}</p>`).join('')}</div><p class="src">Source : <a href="${esc(ar.url)}" target="_blank" rel="noopener">Wikipédia, article « ${esc(ar.title)} »</a> (licence CC BY-SA). L’extrait est abrégé.</p></div>`;
  else h+=`<div class="aibox"><b>${s.online?'Aucun article fiable trouvé pour ce lieu.':'Les sources en ligne sont inaccessibles pour le moment.'}</b><p class="src" style="margin:6px 0 0">${s.online?'Plutôt que d’inventer une histoire, Alentours n’affiche rien sans source. Les liens ci-dessous permettent de chercher dans les bases officielles.':'Réessayez dans un instant, ou utilisez les liens ci-dessous.'}</p></div>`;
  if(s.facts.length)h+=`<div><h4>Repères</h4><div class="facts">${s.facts.map(f=>`<div class="fact"><span>${esc(f.k)}</span><b>${esc(f.v)}</b></div>`).join('')}</div><p class="src">Sources : Wikidata${x.mh?', base Mérimée':''}, OpenStreetMap.</p></div>`;
- h+=`<div id="storyAI"></div><div><h4>Aller plus loin</h4><div class="links">${ar?`<a class="lnk" href="${esc(ar.url)}" target="_blank" rel="noopener">Lire l’article complet</a>`:''}${(ar&&ar.qid)||x.wikidata?`<a class="lnk" href="https://www.wikidata.org/wiki/${esc((ar&&ar.qid)||x.wikidata)}" target="_blank" rel="noopener">Fiche Wikidata</a>`:''}<a class="lnk" href="${popUrl(x)}" target="_blank" rel="noopener">Chercher dans la base Mérimée (POP)</a>${x.lat!=null?`<a class="lnk" href="https://www.openstreetmap.org/?mlat=${x.lat}&mlon=${x.lon}#map=17/${x.lat}/${x.lon}" target="_blank" rel="noopener">Voir sur OpenStreetMap</a>`:''}</div></div></div>`;
+ h+=`<div id="storyAI"></div><div><h4>Aller plus loin</h4><div class="links"><button type="button" class="lnk rep" data-report2="${esc(x.id)}">Signaler un lieu fermé ou une erreur</button>${ar?`<a class="lnk" href="${esc(ar.url)}" target="_blank" rel="noopener">Lire l’article complet</a>`:''}${(ar&&ar.qid)||x.wikidata?`<a class="lnk" href="https://www.wikidata.org/wiki/${esc((ar&&ar.qid)||x.wikidata)}" target="_blank" rel="noopener">Fiche Wikidata</a>`:''}<a class="lnk" href="${popUrl(x)}" target="_blank" rel="noopener">Chercher dans la base Mérimée (POP)</a>${x.lat!=null?`<a class="lnk" href="https://www.openstreetmap.org/?mlat=${x.lat}&mlon=${x.lon}#map=17/${x.lat}/${x.lon}" target="_blank" rel="noopener">Voir sur OpenStreetMap</a>`:''}</div></div></div>`;
  $('#dBody').innerHTML=h;$('#drawer .close').focus();
  const smp=await getSample();if(smp&&curStory===x){$('#storyAI').innerHTML=`<div class="aibox"><h4 style="margin-bottom:4px">Le regard de l’assistant</h4><p class="src" style="margin:0 0 10px">Une lecture plus vivante : chronologie, contexte historique et ce qu’il faut observer sur place. ${paras.length?'Elle s’appuie sur l’extrait ci-dessus.':'Sans source en ligne, elle reste prudente.'}</p><button class="cta" id="storyBtn" type="button">Lire l’histoire approfondie</button><div id="storyOut"></div></div>`;
   $('#storyBtn').onclick=()=>askStory(smp,x,s)}
