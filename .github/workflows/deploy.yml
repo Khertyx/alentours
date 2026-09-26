@@ -29,6 +29,7 @@ jobs:
         env:
           SITE_URL: ${{ vars.SITE_URL || 'https://alentours.khertyx.com' }}
           DATATOURISME_KEY: ${{ secrets.DATATOURISME_KEY }}
+          PYTHONUNBUFFERED: "1"
         run: python3 build_site.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
