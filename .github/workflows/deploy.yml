@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "17 4 * * *"
-  workflow_dispatch:
+    - cron: "17 4 * * *"      # chaque nuit : événements du week-end rafraîchis
+  workflow_dispatch:           # bouton "Run workflow" dans l'onglet Actions
 
 permissions:
   contents: read
@@ -28,6 +28,7 @@ jobs:
       - name: Générer les pages
         env:
           SITE_URL: ${{ vars.SITE_URL || 'https://alentours.khertyx.com' }}
+          DATATOURISME_KEY: ${{ secrets.DATATOURISME_KEY }}
         run: python3 build_site.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
