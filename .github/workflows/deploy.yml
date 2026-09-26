@@ -30,6 +30,8 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL || 'https://alentours.khertyx.com' }}
           DATATOURISME_KEY: ${{ secrets.DATATOURISME_KEY }}
           PYTHONUNBUFFERED: "1"
+          # lieux : 150 requêtes la nuit, 600 lors d'une publication manuelle (le reste pour les événements)
+          DT_PLACES_REQ: ${{ github.event_name == 'schedule' && '150' || '600' }}
         run: python3 build_site.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
