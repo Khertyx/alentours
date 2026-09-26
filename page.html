@@ -699,7 +699,8 @@ async function fetchOsm(p){
   const mh=!!(t['ref:mhs']||t['heritage:operator']==='mhs'||/mhs|monuments/i.test(t['heritage:operator']||''));
   const pr=t.fee==='no'?{p:0,l:'Gratuit'}:parsePrice(t.charge||'');
   const wt=/^fr:/.test(t.wikipedia||'')?t.wikipedia.slice(3):'';
-  return{id:'o'+e.type+e.id,kind:'place',title:t.name,sub,mh,wikiTitle:wt,wheel:t.wheelchair||'',acc:osmAcc(t),wikidata:t.wikidata||'',startDate:t.start_date||'',desc:sub+(t['addr:city']?' à '+t['addr:city']:''),cats:[cat],cat,lat,lon,km:hav(p.lat,p.lon,lat,lon),ang:bearing(p.lat,p.lon,lat,lon),
+  const ax=(t.access||'').toLowerCase();
+  return{id:'o'+e.type+e.id,kind:'place',title:t.name,sub,mh,access:ax,open:!!(t.tourism||t.opening_hours||(t.fee&&t.fee!=='')||t.website||t['contact:website']||/^(yes|permissive|public|destination)$/.test(ax)),wikiTitle:wt,wheel:t.wheelchair||'',acc:osmAcc(t),wikidata:t.wikidata||'',startDate:t.start_date||'',desc:sub+(t['addr:city']?' à '+t['addr:city']:''),cats:[cat],cat,lat,lon,km:hav(p.lat,p.lon,lat,lon),ang:bearing(p.lat,p.lon,lat,lon),
    dateLabel:t.opening_hours?'Horaires : '+t.opening_hours.slice(0,60):'Lieu permanent',venue:t['addr:city']||'',city:t['addr:city']||'',price:pr.p,priceLabel:pr.l==='Prix non précisé'?'Accès selon lieu':pr.l,image:'',url:t.website||t['contact:website']||''}
  }).filter(Boolean).filter(x=>x.km<=S.radius+.5);
 }
@@ -724,11 +725,23 @@ async function enrichWiki(items){
     if(pg.thumbnail&&!x.image)x.image=pg.thumbnail.source;if(pg.extract&&x.desc.length<60)x.desc=clean(pg.extract)});
   }catch(e){}}
 }
+/* Lieux fermés au public : on ne propose pas un château privé ou un manoir habité.
+   - accès privé ou interdit (OpenStreetMap) : exclu
+   - château, manoir, logis, villa, domaine… : gardé seulement avec un signe d'ouverture
+     (site touristique, horaires, tarif, site web, accès public). Sans cela : exclu, y compris les fiches venant seulement de Wikipédia. */
+const PRIV_RX=/chateau|manoir|manor|castle|villa|hotel particulier|logis|gentilhommiere|colombier|domaine|maison forte|malouiniere|demeure|residence/;
+function publicOK(x){
+ if(/^(private|no|customers|delivery|agricultural|forestry)$/.test(x.access||''))return false;
+ const t=norm(x.title+' '+(x.sub||''));
+ if(PRIV_RX.test(t)&&!/ruine|ruins|vestige|motte/.test(t))return !!x.open;
+ return true;
+}
 async function fetchPlaces(p){
  const [o,w]=await Promise.allSettled([fetchOsm(p),fetchWikiGeo(p)]);
  if(o.status==='rejected'&&w.status==='rejected')throw new Error('places');
  const all=(o.status==='fulfilled'?o.value:[]);
  (w.status==='fulfilled'?w.value:[]).forEach(x=>{const ex=all.find(y=>nearSame(x,y));if(ex){if(!ex.wikiTitle)ex.wikiTitle=x.wikiTitle;if(!ex.image&&x.image)ex.image=x.image;if(x.desc.length>ex.desc.length&&ex.desc.length<60)ex.desc=x.desc}else all.push(x)});
+ const kept=all.filter(publicOK);all.length=0;kept.forEach(x=>all.push(x));
  all.sort((a,b)=>((a.mh?0:a.wikiTitle?1:2)-(b.mh?0:b.wikiTitle?1:2))||a.km-b.km);
  const top=all.slice(0,70);
  await enrichWiki(top);
