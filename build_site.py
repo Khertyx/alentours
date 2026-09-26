@@ -6,7 +6,7 @@ Résultat    :  dossier dist/ (publié par GitHub Pages via .github/workflows/de
 
 Aucune dépendance externe. Une source de données qui échoue est ignorée : la page reste valide.
 REUSE=1 réutilise les aperçus déjà générés (aucun appel réseau)."""
-import json, os, re, shutil, time, html, unicodedata, urllib.request, urllib.parse, urllib.error, datetime
+import json, os, re, shutil, sys, time, html, unicodedata, urllib.request, urllib.parse, urllib.error, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SITE = os.environ.get('SITE_URL', 'https://alentours.khertyx.com').rstrip('/')
@@ -94,6 +94,7 @@ def head(title, desc, url, extra=''):
             f'<meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#2c6b56">'
             f'<link rel="icon" type="image/svg+xml" href="{BASE}/assets/favicon.svg"><link rel="manifest" href="{BASE}/manifest.webmanifest">'
             f'<link rel="preload" href="{BASE}/fonts/cormorant-garamond-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>'
+            f'<script>window.ALENTOURS_BASE={json.dumps(BASE)};</script>'
             f'{extra}<style>{FONTS_CSS}body{{margin:0}}img{{max-width:100%}}[hidden]{{display:none!important}}</style></head><body>')
 
 LEGAL = '''<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -124,6 +125,7 @@ table{border-collapse:collapse;width:100%%;font-size:.95rem}td,th{border-bottom:
 <tr><td>API Adresse (data.gouv.fr)</td><td>Recherche de communes et d'adresses</td></tr>
 <tr><td>Wikipédia et Wikidata (Wikimedia)</td><td>Histoire des lieux, photos, repères</td></tr>
 <tr><td>Open-Meteo</td><td>Prévisions météo</td></tr>
+<tr><td>DATAtourisme (fichiers servis par ce site)</td><td>Événements des offices de tourisme, mis à jour chaque nuit</td></tr>
 </tbody></table></div>
 <p>Les polices de caractères sont hébergées sur ce site : aucun appel à Google Fonts.</p>
 
@@ -145,7 +147,7 @@ Site de l'agence : <a href="https://www.khertyx.com">www.khertyx.com</a></p>
 <p>GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis (GitHub Pages).</p>
 
 <h2>Contenus et licences</h2>
-<p>Événements : licence ouverte des agendas publiés sur OpenAgenda. Lieux : © contributeurs OpenStreetMap, licence ODbL. Textes et images Wikipédia : licence CC BY-SA, avec lien vers l'article source sur chaque fiche. Polices Cormorant Garamond et Hanken Grotesk : SIL Open Font License.</p>
+<p>Événements : licence ouverte des agendas publiés sur OpenAgenda, et DATAtourisme (Licence Ouverte Etalab, source et date de mise à jour indiquées sur chaque fiche). Lieux : © contributeurs OpenStreetMap, licence ODbL. Textes et images Wikipédia : licence CC BY-SA, avec lien vers l'article source sur chaque fiche. Polices Cormorant Garamond et Hanken Grotesk : SIL Open Font License.</p>
 
 <h2>Exactitude des informations</h2>
 <p>Les horaires, tarifs et informations d'accessibilité viennent des organisateurs et de contributeurs bénévoles. Ils peuvent être incomplets ou avoir changé : vérifiez-les auprès du lieu avant de vous déplacer, en particulier pour un besoin d'accessibilité. Les textes rédigés par l'assistant sont signalés et à vérifier.</p>
@@ -175,6 +177,13 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     for d in ('fonts', 'assets'):
         shutil.copytree(os.path.join(HERE, d), os.path.join(OUT, d), dirs_exist_ok=True)
+    # Événements DATAtourisme (si la clé est disponible dans le secret DATATOURISME_KEY)
+    sys.path.insert(0, os.path.join(HERE, 'tools'))
+    try:
+        import fetch_datatourisme
+        fetch_datatourisme.run(OUT)
+    except Exception as x:
+        print('DATAtourisme KO', type(x).__name__, str(x)[:200])
     s, e = weekend()
     urls = [SITE + '/', SITE + '/mentions-legales/']
 

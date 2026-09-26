@@ -362,6 +362,7 @@ footer{background:var(--surface2);border-top:1px solid var(--line);padding-block
 
 .wx .lnk{display:block;margin-top:4px}
 .strip .hint{margin:8px 0 6px}
+.credit{margin:0;font-size:.78rem;color:var(--muted)}
 .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -469,10 +470,10 @@ footer{background:var(--surface2);border-top:1px solid var(--line);padding-block
   <section class="why" aria-label="Pourquoi Alentours">
     <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><h4>Une seule recherche</h4><p>Événements datés et sites à visiter, réunis autour du point choisi.</p></div>
     <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><h4>Vos critères, sans obligation</h4><p>Seul le lieu est requis. Groupe, distance, budget et envies affinent la liste.</p></div>
-    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg><h4>Sources ouvertes</h4><p>OpenAgenda, OpenStreetMap, Wikipédia et Open-Meteo. Aucune donnée personnelle conservée.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg><h4>Sources ouvertes</h4><p>OpenAgenda, DATAtourisme, OpenStreetMap, Wikipédia et Open-Meteo. Aucune donnée personnelle conservée.</p></div>
   </section>
 </div>
-<footer><div class="wrap">Alentours. Données d’événements OpenAgenda (licence ouverte), lieux © contributeurs OpenStreetMap, météo Open-Meteo. Vérifiez horaires et tarifs auprès de l’organisateur.</div></footer>
+<footer><div class="wrap">Alentours. Données d’événements OpenAgenda et DATAtourisme (licences ouvertes), lieux © contributeurs OpenStreetMap, météo Open-Meteo. Vérifiez horaires et tarifs auprès de l’organisateur.</div></footer>
 
 <div class="drawer" id="drawer" hidden><div class="scrim" data-close></div><aside class="panel" role="dialog" aria-modal="true" aria-labelledby="dTitle"><button class="close" data-close aria-label="Fermer">&times;</button><div id="dBody"></div></aside></div>
 <script>
@@ -761,6 +762,36 @@ function demoItems(p){return DEMO.map((d,i)=>{const dx=d[4]*(S.radius/20),dy=d[5
  const lat=p.lat+dy/111,lon=p.lon+dx/(111*Math.cos(p.lat*Math.PI/180));
  return{id:'x'+i,kind:'sample',wheel:i%3===0?'yes':'',acc:i%3===0?['motor','hearing']:i%4===0?['visual']:[],title:d[0],desc:d[7]+'. Exemple illustratif pour montrer le rendu de la liste.',cats:[d[1]],cat:d[1],lat,lon,km:Math.hypot(dx,dy),ang:Math.atan2(dy,dx),dateLabel:d[6],venue:d[7],price:d[2],priceLabel:d[3],image:'',url:''}}).filter(x=>x.km<=S.radius)}
 
+
+/* ---------- DATAtourisme (fichiers générés chaque nuit par le site) ---------- */
+const DT_BASE=(typeof window.ALENTOURS_BASE==='string')?window.ALENTOURS_BASE:null;
+let dtIndexP=null;const dtCache={};
+function dtIndex(){if(DT_BASE===null)return Promise.reject(new Error('no-base'));if(!dtIndexP)dtIndexP=jfetch(DT_BASE+'/data/events/index.json',null,8000).catch(e=>{dtIndexP=null;throw e});return dtIndexP}
+function dtDept(d){if(!dtCache[d])dtCache[d]=jfetch(DT_BASE+'/data/events/'+d+'.json',null,12000).catch(e=>{delete dtCache[d];throw e});return dtCache[d]}
+async function fetchDT(p,per){
+ const idx=await dtIndex();const dy=S.radius/111,dx=S.radius/(111*Math.cos(p.lat*Math.PI/180));
+ const deps=Object.entries(idx.depts||{}).filter(([k,v])=>{const b=v.b;return p.lat+dy>=b[0]&&p.lat-dy<=b[2]&&p.lon+dx>=b[1]&&p.lon-dx<=b[3]}).map(([k])=>k);
+ const lists=await Promise.allSettled(deps.map(dtDept));const out=[];
+ lists.forEach(r=>{if(r.status!=='fulfilled')return;r.value.forEach(e=>{
+  const km=hav(p.lat,p.lon,e.la,e.lo);if(km>S.radius+.5)return;
+  const hit=(e.dt||[]).filter(d=>d[0]<=per.e&&(d[1]||d[0])>=per.s);if(!hit.length)return;
+  const first=e.dt[0],last=e.dt[e.dt.length-1];
+  const same=first[0]===(last[1]||last[0]);
+  const dl=e.dt.length>1&&!same?(e.dt.length<=3?e.dt.map(d=>fr(d[0])).join(', '):'Du '+fr(first[0])+' au '+fr(last[1]||last[0])):(first[0]===(first[1]||first[0])?fr(first[0],{weekday:'long',day:'numeric',month:'long'}):'Du '+fr(first[0])+' au '+fr(first[1]));
+  const h=hit[0][2]?' à '+hit[0][2].replace(':','h'):'';
+  const pr=parsePrice(e.p);const cats=classify(e.t,e.d);
+  out.push({id:'d'+e.id,kind:'event',src:'dt',title:e.t,desc:e.d,cats,cat:cats[0],lat:e.la,lon:e.lo,km,ang:bearing(p.lat,p.lon,e.la,e.lo),
+   dateLabel:dl+h,venue:e.c||'',city:e.c||'',venueName:'',price:pr.p,priceLabel:e.p?(pr.p===0?'Gratuit':(pr.l==='Voir conditions'?e.p.slice(0,40):pr.l)):'Prix non précisé',
+   image:e.i||'',url:e.u||'',acc:[],kw:'',start:hit[0][0]+'T'+(hit[0][2]||'12:00'),span:Math.max(0,(new Date(last[1]||last[0])-new Date(first[0]))/864e5),by:e.by||'',upd:e.m||''})})});
+ return out;
+}
+function mergeEvents(a,b){
+ const key=x=>norm(x.title).replace(/[^a-z0-9]/g,'').slice(0,40);
+ const seen=new Map();a.forEach(x=>seen.set(key(x),x));
+ b.forEach(x=>{const k=key(x),o=seen.get(k);if(o&&Math.abs(o.lat-x.lat)<.05&&Math.abs(o.lon-x.lon)<.05){if(!o.image&&x.image)o.image=x.image;if(!o.by&&x.by){o.by=x.by;o.upd=x.upd}return}seen.set(k+'|'+x.id,x)});
+ return[...seen.values()];
+}
+
 /* ---------- recherche ---------- */
 let seq=0;
 async function search(){
@@ -769,10 +800,11 @@ async function search(){
   const r=await geocode(q);if(!r.length){$('#err').textContent='Lieu introuvable. Essayez le nom d’une commune proche.';return}pick(r[0]);}
  const my=++seq,p=S.place,per=period();S.period=per;S.mode='loading';S.hiddenNoPrice=0;S.includeNoPrice=false;S.showAllWho=false;S.includeNoAccess=false;S.favOnly=false;$('#favBtn').setAttribute('aria-pressed','false');
  $('#go').disabled=true;renderLoading();
- const [ev,pl,wx]=await Promise.allSettled([fetchEvents(p,per),fetchPlaces(p),fetchWeather(p,per)]);
+ const [ev,pl,wx,dt]=await Promise.allSettled([fetchEvents(p,per),fetchPlaces(p),fetchWeather(p,per),fetchDT(p,per)]);
  if(my!==seq)return;$('#go').disabled=false;
  S.wx=wx.status==='fulfilled'?wx.value:[];
- if(ev.status==='fulfilled'){S.items=ev.value.concat(pl.status==='fulfilled'?pl.value:[]);S.mode='ready';S.live=true;S.placesOk=pl.status==='fulfilled'}
+ const evs=mergeEvents(ev.status==='fulfilled'?ev.value:[],dt.status==='fulfilled'?dt.value:[]);
+ if(ev.status==='fulfilled'||(dt.status==='fulfilled'&&dt.value.length)){S.items=evs.concat(pl.status==='fulfilled'?pl.value:[]);S.mode='ready';S.live=true;S.placesOk=pl.status==='fulfilled'}
  else{S.items=demoItems(p);S.mode='ready';S.live=false}
  S.aiIdeas=null;S.route=null;render();
  const r=$('#results');if(S.noScroll){S.noScroll=false;return}r.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});
@@ -828,6 +860,7 @@ function card(x,i){
   ${x._f&&x._f.reason&&x._f.score>=1?`<span class="fit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${esc(x._f.reason)}</span>`:''}
   <div class="meta"><span>${ICON.cal}${esc(x.dateLabel||'Date à confirmer')}</span><span>${ICON.pin}${x.km<1?'moins de 1':x.km.toFixed(1).replace('.',',')} km${x.venue?' · '+esc(x.venue):''}</span></div>
   ${x.desc?`<p class="desc">${esc(x.desc)}</p>`:''}
+  ${x.by?`<p class="credit">Info ${esc(x.by)}${x.upd?', mise à jour le '+esc(fr(x.upd,{day:'numeric',month:'short',year:'numeric'})):''} · DATAtourisme</p>`:''}
   <div class="foot"><span class="price${x.price===0?' free':''}">${esc(x.priceLabel)}</span>
    ${sb}
    <a class="lnk" href="${nav}" target="_blank" rel="noopener">Itinéraire</a>
