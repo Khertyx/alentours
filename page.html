@@ -81,6 +81,7 @@ button,input,select{font:inherit;color:inherit}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .chip .dot{width:10px;height:10px;border-radius:50%;background:var(--c,var(--moss))}
 .chip[aria-pressed="true"] .dot{box-shadow:0 0 0 2px var(--on-accent)}
+[hidden]{display:none!important}
 .dates{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
 .dates input[type=date]{background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:9px 12px}
 details.more summary{cursor:pointer;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px;color:var(--accent2);width:fit-content}
@@ -440,8 +441,13 @@ footer{background:var(--surface2);border-top:1px solid var(--line);padding-block
       <p class="hint">Châteaux, musées, monuments et lieux historiques. Plusieurs choix possibles, pour tous les groupes.</p>
     </div>
 
+    <div>
+      <span class="lbl">Vos envies (facultatif)</span>
+      <div class="chips" id="cats"></div>
+    </div>
+
     <details class="more" id="more">
-      <summary>Affiner : distance, budget, envies</summary>
+      <summary>Affiner : distance, budget, confort</summary>
       <div class="more-grid">
         <div>
           <span class="lbl">Distance maximale</span>
@@ -461,10 +467,6 @@ footer{background:var(--surface2);border-top:1px solid var(--line);padding-block
             <button type="button" class="chip" id="paceLively" data-pace="lively" aria-pressed="false">Dynamique</button>
           </div>
           <p class="hint">« Accessible » s’appuie sur OpenStreetMap, parfois incomplet.</p>
-        </div>
-        <div style="grid-column:1/-1">
-          <span class="lbl">Vos envies (facultatif)</span>
-          <div class="chips" id="cats"></div>
         </div>
       </div>
     </details>
@@ -599,7 +601,7 @@ const whoLabel=()=>S.who?WHOLBL[S.who]+(S.who==='kids'?' (jusqu’à '+S.kidAge+
 const COLL=[['mh','Monuments historiques'],['chateau','Châteaux et manoirs'],['musee','Musées et galeries'],['religieux','Églises, abbayes, chapelles'],['archeo','Sites archéologiques'],['bati','Moulins, phares, remparts']];
 const inColl=(x,c)=>{if(x.kind!=='place'&&x.kind!=='sample')return false;const t=norm(x.title+' '+(x.sub||''));
  switch(c){case'mh':return!!x.mh;case'chateau':return/chateau|manoir|donjon|forteresse|\bfort\b/.test(t);case'musee':return/musee|galerie/.test(t);
- case'religieux':return/eglise|chapelle|abbaye|cathedrale|prieure|basilique|monastere|couvent|calvaire|croix|oratoire|lieu de culte/.test(t);
+ case'religieux':return/eglise|chapelle|abbaye|cathedrale|prieure|basilique|monastere|couvent|calvaire|croix|oratoire|lieu de culte|site religieux/.test(t);
  case'archeo':return/archeolog|menhir|dolmen|alignement|megalith|tumulus|oppidum|cairn/.test(t);case'bati':return/moulin|phare|rempart|porte fortifiee|\btour\b|lavoir|colombier/.test(t)}return false};
 function heritageStrip(){
  if(S.coll.size||S.kind==='event')return'';
@@ -692,12 +694,28 @@ async function fetchEvents(p,per){
 const HRX=/ch[aâ]teau|[ée]glise|chapelle|abbaye|manoir|mus[ée]e|cath[ée]drale|\bfort\b|fortification|phare|moulin|ruines?|jardin|calvaire|croix|\btour\b|prieur[ée]|basilique|h[ôo]tel-dieu|halle|lavoir|menhir|dolmen|alignements|th[ée][aâ]tre|couvent|monast[èe]re|palais|oppidum|villa|remparts|porte |donjon|hospice|bastide|colombier|enclos|site arch|cit[ée] |m[ée]galith|tumulus|cairn|fontaine/i;
 const TYPES={museum:'Musée',attraction:'Site à visiter',viewpoint:'Point de vue',zoo:'Parc animalier',theme_park:'Parc de loisirs',gallery:'Galerie',theatre:'Théâtre',arts_centre:'Centre d’art',cinema:'Cinéma',library:'Bibliothèque',park:'Parc',garden:'Jardin',nature_reserve:'Réserve naturelle',community_centre:'Salle communale',place_of_worship:'Lieu de culte',castle:'Château',monument:'Monument',ruins:'Ruines',archaeological_site:'Site archéologique',manor:'Manoir',memorial:'Mémorial',church:'Église',chapel:'Chapelle',wayside_cross:'Calvaire ou croix',wayside_shrine:'Oratoire',fort:'Fort',city_gate:'Porte fortifiée',citywalls:'Remparts',tower:'Tour',mill:'Moulin',lighthouse:'Phare',abbey:'Abbaye',monastery:'Monastère',building:'Édifice historique'};
 const wq=(o)=>'https://fr.wikipedia.org/w/api.php?format=json&origin=*&'+new URLSearchParams(o);
-const nearSame=(a,b)=>{const ka=norm(a.title),kb=norm(b.title);if(ka===kb)return true;if(a.wikiTitle&&b.wikiTitle&&norm(a.wikiTitle)===norm(b.wikiTitle))return true;
- return hav(a.lat,a.lon,b.lat,b.lon)<.25&&(ka.includes(kb)||kb.includes(ka))};
+/* Doublons : même lieu venant de sources différentes (office de tourisme, OpenStreetMap, Wikipédia) */
+const STOPW=new Set('le la les de du des d l et a au aux en sur sous lez les'.split(' '));
+const GENW=new Set('eglise chapelle chateau musee parc jardin jardins abbaye saint sainte st ste notre dame manoir moulin site point vue tour fort ruines ancien ancienne vieux vieille maison place square domaine'.split(' '));
+const ptoks=s=>norm(s).replace(/[^a-z0-9]+/g,' ').split(' ').filter(w=>w&&!STOPW.has(w));
+const famOf=x=>{const t=norm(x.title+' '+(x.sub||''));return/eglise|chapelle|abbaye|cathedrale|basilique|prieure|religieux|culte|monastere|couvent/.test(t)?'rel':/chateau|manoir|donjon|forteresse|\bfort\b/.test(t)?'cas':/musee|galerie|interpretation/.test(t)?'mus':/parc|jardin|vue|naturel|foret|lac|etang/.test(t)?'nat':'oth'};
+const nearSame=(a,b)=>{
+ if(a.wikidata&&b.wikidata)return a.wikidata===b.wikidata;
+ if(a.wikiTitle&&b.wikiTitle&&norm(a.wikiTitle)===norm(b.wikiTitle))return true;
+ const d=hav(a.lat,a.lon,b.lat,b.lon);if(d>2)return false;
+ const ta=ptoks(a.title),tb=ptoks(b.title);if(ta.join(' ')===tb.join(' '))return true;
+ if(d>.45)return false;
+ const da=ta.filter(w=>!GENW.has(w)),db=tb.filter(w=>!GENW.has(w));
+ if(da.length&&db.length){const sb=new Set(db),inter=da.filter(w=>sb.has(w)).length;if(inter/Math.min(da.length,db.length)>=.6)return true}
+ const fa=famOf(a),fb=famOf(b);
+ if((!da.length||!db.length)&&fa===fb&&fa!=='oth'&&d<.15)return true;
+ return d<.05&&fa===fb};
+const JUNK=/^(calvaire|croix|monument aux morts|stele|plaque|oratoire|statue|borne|puits|lavoir|fontaine|cimetiere|tombe)\b/;
 async function fetchOsm(p){
  const r=Math.round(S.radius*1000),c=`(around:${r},${p.lat},${p.lon})`;
  const ex=(S.who==='access'||S.accessible)?`nwr${c}[name][wheelchair~"^(yes|designated)$"][~"^(amenity|leisure|tourism|historic)$"~"^(museum|attraction|viewpoint|gallery|zoo|castle|monument|memorial|church|chapel|theatre|arts_centre|cinema|library|park|garden|nature_reserve|community_centre|place_of_worship)$"];nwr${c}[name][~"^(hearing_loop|tactile_paving|tactile_writing|tactile_map)$"~"^yes$"];`:'';
- const q=`[out:json][timeout:25];(nwr${c}[name][tourism~"^(museum|attraction|viewpoint|zoo|theme_park|gallery)$"];nwr${c}[name][historic~"^(castle|monument|ruins|archaeological_site|manor|memorial|church|chapel|wayside_cross|wayside_shrine|fort|city_gate|citywalls|tower|mill|lighthouse|abbey|monastery)$"];nwr${c}[name][heritage];nwr${c}[name][wikipedia];${ex});out tags center 220;`;
+ const K='[~"^(wikidata|wikipedia|heritage|ref:mhs|website|contact:website|opening_hours)$"~"."]';
+ const q=`[out:json][timeout:25];(nwr${c}[name][tourism~"^(museum|zoo|theme_park|gallery|viewpoint)$"];nwr${c}[name][tourism=attraction]${K};nwr${c}[name][historic~"^(castle|monument|ruins|archaeological_site|manor|church|chapel|fort|city_gate|citywalls|tower|mill|lighthouse|abbey|monastery)$"]${K};nwr${c}[name][amenity=place_of_worship][~"^(heritage|ref:mhs|wikidata)$"~"."];${ex});out tags center 200;`;
  const j=await jfetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:'data='+encodeURIComponent(q)},16000);
  return(j.elements||[]).map(e=>{
   const t=e.tags||{},lat=e.lat||(e.center&&e.center.lat),lon=e.lon||(e.center&&e.center.lon);if(!lat||!lon||!t.name)return null;
@@ -709,7 +727,7 @@ async function fetchOsm(p){
   const ax=(t.access||'').toLowerCase();
   return{id:'o'+e.type+e.id,kind:'place',title:t.name,sub,mh,access:ax,open:!!(t.tourism||t.opening_hours||(t.fee&&t.fee!=='')||t.website||t['contact:website']||/^(yes|permissive|public|destination)$/.test(ax)),wikiTitle:wt,wheel:t.wheelchair||'',acc:osmAcc(t),wikidata:t.wikidata||'',startDate:t.start_date||'',desc:sub+(t['addr:city']?' à '+t['addr:city']:''),cats:[cat],cat,lat,lon,km:hav(p.lat,p.lon,lat,lon),ang:bearing(p.lat,p.lon,lat,lon),
    dateLabel:t.opening_hours?'Horaires : '+t.opening_hours.slice(0,60):'Lieu permanent',venue:t['addr:city']||'',city:t['addr:city']||'',price:pr.p,priceLabel:pr.l==='Prix non précisé'?'Accès selon lieu':pr.l,image:'',url:t.website||t['contact:website']||''}
- }).filter(Boolean).filter(x=>x.km<=S.radius+.5);
+ }).filter(Boolean).filter(x=>x.km<=S.radius+.5&&(x.mh||!JUNK.test(norm(x.title))));
 }
 async function fetchWikiGeo(p){
  const rad=Math.min(S.radius,10)*1000;
@@ -743,14 +761,46 @@ function publicOK(x){
  if(PRIV_RX.test(t)&&!/ruine|ruins|vestige|motte/.test(t))return !!x.open;
  return true;
 }
+/* Lieux des offices de tourisme (DATAtourisme), générés chaque nuit par le site */
+const PT=[['Castle','Château','patrimoine'],['Abbey','Abbaye','patrimoine'],['Basilica','Basilique','patrimoine'],['Church','Église','patrimoine'],['ReligiousSite','Site religieux','patrimoine'],['Museum','Musée','patrimoine'],['InterpretationCentre','Centre d’interprétation','patrimoine'],['ArcheologicalSite','Site archéologique','patrimoine'],['ZooAnimalPark','Parc animalier','famille'],['ThemePark','Parc de loisirs','famille'],['TeachingFarm','Ferme pédagogique','famille'],['PointOfView','Point de vue','nature'],['ParkAndGarden','Parc et jardin','nature'],['Park','Parc','nature'],['NaturalHeritage','Site naturel','nature'],['RemarkableBuilding','Édifice remarquable','patrimoine'],['CulturalSite','Site culturel','patrimoine']];
+let dpIdxP=null;const dpCache={};
+async function fetchDTPlaces(p){
+ if(typeof DT_BASE!=='string')return[];
+ if(!dpIdxP)dpIdxP=jfetch(DT_BASE+'/data/places/index.json',null,8000).catch(e=>{dpIdxP=null;throw e});
+ const idx=await dpIdxP;const dy=S.radius/111,dx=S.radius/(111*Math.cos(p.lat*Math.PI/180));
+ const deps=Object.entries(idx.depts||{}).filter(([k,v])=>{const b=v.b;return p.lat+dy>=b[0]&&p.lat-dy<=b[2]&&p.lon+dx>=b[1]&&p.lon-dx<=b[3]}).map(([k])=>k);
+ const lists=await Promise.allSettled(deps.map(d=>dpCache[d]||(dpCache[d]=jfetch(DT_BASE+'/data/places/'+d+'.json',null,12000).catch(e=>{delete dpCache[d];throw e}))));
+ const out=[];
+ lists.forEach(r=>{if(r.status!=='fulfilled')return;r.value.forEach(e=>{
+  const km=hav(p.lat,p.lon,e.la,e.lo);if(km>S.radius+.5)return;
+  const ty=PT.find(t=>(e.k||[]).includes(t[0]))||['','Site à visiter','patrimoine'];
+  const pr=e.p?parsePrice(e.p):{p:null,l:''};
+  out.push({id:'p'+e.id,kind:'place',src:'dt',title:e.t,sub:ty[1],mh:false,access:'',open:true,wikiTitle:'',wheel:'',acc:[],wikidata:'',startDate:'',
+   desc:e.d||(ty[1]+(e.c?' à '+e.c:'')),cats:[ty[2]],cat:ty[2],lat:e.la,lon:e.lo,km,ang:bearing(p.lat,p.lon,e.la,e.lo),dateLabel:'Lieu permanent',venue:e.c||'',city:e.c||'',
+   price:pr.p,priceLabel:e.p?(pr.p===0?'Gratuit':(pr.l==='Voir conditions'?e.p.slice(0,40):pr.l)):'Accès selon lieu',image:'',url:e.u||'',by:e.by||'',upd:e.m||''})})});
+ return out;
+}
+function mergePlace(ex,x){
+ ['wikiTitle','wikidata','image','startDate','url','wheel','city','venue'].forEach(k=>{if(!ex[k]&&x[k])ex[k]=x[k]});
+ if(x.mh)ex.mh=true;if(x.open)ex.open=true;if((!ex.acc||!ex.acc.length)&&x.acc&&x.acc.length)ex.acc=x.acc;
+ if(/^(private|no)$/.test(x.access||'')&&ex.src!=='dt')ex.access=x.access;
+ if(ex.desc.length<60&&x.desc&&x.desc.length>ex.desc.length)ex.desc=x.desc;
+}
 async function fetchPlaces(p){
- const [o,w]=await Promise.allSettled([fetchOsm(p),fetchWikiGeo(p)]);
- if(o.status==='rejected'&&w.status==='rejected')throw new Error('places');
- const all=(o.status==='fulfilled'?o.value:[]);
- (w.status==='fulfilled'?w.value:[]).forEach(x=>{const ex=all.find(y=>nearSame(x,y));if(ex){if(!ex.wikiTitle)ex.wikiTitle=x.wikiTitle;if(!ex.image&&x.image)ex.image=x.image;if(x.desc.length>ex.desc.length&&ex.desc.length<60)ex.desc=x.desc}else all.push(x)});
- const kept=all.filter(publicOK);all.length=0;kept.forEach(x=>all.push(x));
- all.sort((a,b)=>((a.mh?0:a.wikiTitle?1:2)-(b.mh?0:b.wikiTitle?1:2))||a.km-b.km);
- const top=all.slice(0,70);
+ const [d,o,w]=await Promise.allSettled([fetchDTPlaces(p),fetchOsm(p),fetchWikiGeo(p)]);
+ if(d.status==='rejected'&&o.status==='rejected'&&w.status==='rejected')throw new Error('places');
+ const dt=d.status==='fulfilled'?d.value:[],osm=o.status==='fulfilled'?o.value:[],wiki=w.status==='fulfilled'?w.value:[];
+ const all=[];const add=x=>{const ex=all.find(y=>nearSame(x,y));if(ex){mergePlace(ex,x);return true}all.push(x);return false};
+ dt.sort((a,b)=>b.desc.length-a.desc.length).forEach(add);
+ osm.sort((a,b)=>(b.mh-a.mh)||((b.wikidata?1:0)-(a.wikidata?1:0))).forEach(add);
+ /* Wikipédia n'ajoute pas de lieu : il complète une fiche existante (histoire, photo).
+    Seule exception : aucune autre source n'a répondu, et seulement pour les édifices religieux, musées et sites archéologiques. */
+ const fallback=!dt.length&&o.status!=='fulfilled';
+ wiki.forEach(x=>{const ex=all.find(y=>nearSame(x,y));if(ex){mergePlace(ex,x);return}
+  if(fallback&&/eglise|chapelle|abbaye|cathedrale|basilique|musee|archeolog|menhir|dolmen|alignement/.test(norm(x.title)))all.push(x)});
+ const kept=all.filter(publicOK);
+ kept.sort((a,b)=>((a.mh?0:a.src==='dt'?1:a.wikiTitle?2:3)-(b.mh?0:b.src==='dt'?1:b.wikiTitle?2:3))||a.km-b.km);
+ const top=kept.slice(0,90);
  await enrichWiki(top);
  return top;
 }
@@ -805,11 +855,20 @@ async function fetchDT(p,per){
    image:e.i||'',url:e.u||'',acc:[],kw:'',start:hit[0][0]+'T'+(hit[0][2]||'12:00'),span:Math.max(0,(new Date(last[1]||last[0])-new Date(first[0]))/864e5),by:e.by||'',upd:e.m||''})})});
  return out;
 }
+function evSame(o,x){
+ if(hav(o.lat,o.lon,x.lat,x.lon)>1.5)return false;
+ const a=ptoks(o.title),b=ptoks(x.title);if(!a.length||!b.length)return false;
+ const sb=new Set(b),inter=a.filter(w=>sb.has(w)).length;
+ if(a.join(' ')!==b.join(' ')&&inter/Math.min(a.length,b.length)<.8)return false;
+ if(!o.start||!x.start||o.span>2||x.span>2)return true;
+ return Math.abs(new Date(o.start)-new Date(x.start))<36*36e5;
+}
 function mergeEvents(a,b){
- const key=x=>norm(x.title).replace(/[^a-z0-9]/g,'').slice(0,40);
- const seen=new Map();a.forEach(x=>seen.set(key(x),x));
- b.forEach(x=>{const k=key(x),o=seen.get(k);if(o&&Math.abs(o.lat-x.lat)<.05&&Math.abs(o.lon-x.lon)<.05){if(!o.image&&x.image)o.image=x.image;if(!o.by&&x.by){o.by=x.by;o.upd=x.upd}return}seen.set(k+'|'+x.id,x)});
- return[...seen.values()];
+ const out=[];
+ a.concat(b).forEach(x=>{const o=out.find(y=>evSame(y,x));
+  if(o){if(!o.image&&x.image)o.image=x.image;if(!o.url&&x.url)o.url=x.url;if(!o.by&&x.by){o.by=x.by;o.upd=x.upd}if((o.desc||'').length<(x.desc||'').length&&(o.desc||'').length<80)o.desc=x.desc;return}
+  out.push(x)});
+ return out;
 }
 
 /* ---------- lieux signalés : exclusions confirmées (serveur) + masqués localement ---------- */
