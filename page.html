@@ -730,8 +730,10 @@ function gridDedupe(list,same,merge){
   if(ex){merge(ex,x);continue}
   const k=gi+'|'+gj;if(!cells.has(k))cells.set(k,[]);cells.get(k).push(x);out.push(x)}
  return out}
-const OVP=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-async function overpass(q,ms){let last;for(const u of OVP){try{return await jfetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:'data='+encodeURIComponent(q)},ms)}catch(e){last=e}}throw last}
+const OVP=['https://overpass-api.de/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+/* Un seul appel à la fois vers Overpass (limite de 2 requêtes simultanées par personne), serveur de secours si besoin */
+let ovpQ=Promise.resolve();
+function overpass(q,ms){const run=async()=>{let last;for(const u of OVP){try{return await jfetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:'data='+encodeURIComponent(q)},ms)}catch(e){last=e}}throw last};const r=ovpQ.then(run,run);ovpQ=r.catch(()=>{});return r}
 const OSMCAT={viewpoint:'nature',park:'nature',garden:'nature',nature_reserve:'nature',beach:'nature',waterfall:'nature',cave_entrance:'nature',peak:'nature',
  zoo:'famille',aquarium:'famille',theme_park:'famille',water_park:'famille',miniature_golf:'famille',bowling_alley:'famille',escape_game:'famille',amusement_arcade:'famille',playground:'famille',
  theatre:'spectacle',cinema:'spectacle',arts_centre:'spectacle',marketplace:'gastro',
@@ -739,7 +741,7 @@ const OSMCAT={viewpoint:'nature',park:'nature',garden:'nature',nature_reserve:'n
 async function fetchOsm(p){
  const r=Math.round(S.radius*1000),c=`(around:${r},${p.lat},${p.lon})`;
  const K='[~"^(wikidata|wikipedia|heritage|ref:mhs|website|contact:website|opening_hours)$"~"."]',NP='[access!~"^(private|no|customers|permit)$"]';
- const q=`[out:json][timeout:90];(
+ const q=`[out:json][timeout:45];(
 nwr${c}[name][tourism~"^(museum|gallery|zoo|aquarium|theme_park|viewpoint)$"];
 nwr${c}[name][tourism=attraction]${K};
 nwr${c}[name][historic~"^(church|chapel|archaeological_site|ruins|fort|city_gate|citywalls|lighthouse|abbey|monastery|tower|mill|megalith|tumulus)$"]${NP};
@@ -750,7 +752,7 @@ nwr${c}[name][leisure~"^(park|nature_reserve|garden|sports_centre|swimming_pool|
 nwr${c}[name][natural~"^(beach|cave_entrance|peak)$"];
 nwr${c}[name][waterway=waterfall];
 );out tags center 6000;`;
- const j=await overpass(q,60000);
+ const j=await overpass(q,45000);
  return(j.elements||[]).map(e=>{
   const t=e.tags||{},lat=e.lat||(e.center&&e.center.lat),lon=e.lon||(e.center&&e.center.lon);if(!lat||!lon||!t.name)return null;
   const key=[t.tourism,t.historic,t.amenity,t.leisure,t.natural,t.waterway].find(v=>v&&(TYPES[v]||OSMCAT[v]))||'';
@@ -977,7 +979,7 @@ async function search(){
  const my=++seq,p=S.place,per=period();S.period=per;S.mode='loading';S.limit=60;S.hiddenNoPrice=0;S.includeNoPrice=false;S.showAllWho=false;S.includeNoAccess=false;S.favOnly=false;$('#favBtn').setAttribute('aria-pressed','false');
  $('#go').disabled=true;renderLoading();
  /* sources lentes lancées tout de suite, fusionnées quand elles arrivent */
- const slow=Promise.allSettled([fetchOsm(p),fetchWikidata(p),fetchTrails(p)]);
+ const slow=[fetchOsm(p),fetchWikidata(p),fetchTrails(p)];slow.forEach(x=>x.catch(()=>{}));
  const [ev,dp,wx,dt]=await Promise.allSettled([fetchEvents(p,per),fetchDTPlaces(p),fetchWeather(p,per),fetchDT(p,per)]);
  if(my!==seq)return;$('#go').disabled=false;
  S.wx=wx.status==='fulfilled'?wx.value:[];
@@ -988,14 +990,18 @@ async function search(){
  S.items=evs.concat(buildPlaces(dtp,[],[],[])).filter(keep);S.mode='ready';S.live=true;
  S.aiIdeas=null;S.route=null;render();roadRefresh(my);
  const r=$('#results');if(!S.noScroll)r.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});S.noScroll=false;
- const [o,w,t]=await slow;if(my!==seq)return;
- const osm=o.status==='fulfilled'?o.value:[],wd=w.status==='fulfilled'?w.value:[],tr=t.status==='fulfilled'?t.value:[];
- const pl=buildPlaces(dtp,osm,wd,tr);
- enrichWiki(pl.filter(x=>x.wikiTitle).sort((a,b)=>a.km-b.km).slice(0,80)).then(()=>{if(my===seq&&S.mode==='ready')render()});
+ /* chaque source s'ajoute dès qu'elle répond, sans attendre les autres */
+ const got={osm:[],wd:[],tr:[]};
+ const upd=()=>{if(my!==seq)return;const pl=buildPlaces(dtp,got.osm,got.wd,got.tr);S.items=evs.concat(pl).filter(keep);render();roadRefresh(my)};
+ const [po,pw,pt]=slow;
+ pw.then(v=>{got.wd=v;upd();enrichWiki(v.filter(x=>x.wikiTitle).sort((a,b)=>a.km-b.km).slice(0,60)).then(()=>{if(my===seq&&S.mode==='ready')render()})},()=>{});
+ po.then(v=>{got.osm=v;upd()},()=>{});
+ pt.then(v=>{got.tr=v;upd()},()=>{});
+ const [o,w,t]=await Promise.allSettled(slow);if(my!==seq)return;
  S.placesOk=o.status==='fulfilled'||w.status==='fulfilled';S.loadingMore=false;
  S.srcErr=[o.status!=='fulfilled'?'OpenStreetMap':'',w.status!=='fulfilled'?'Wikipédia':'',t.status!=='fulfilled'?'sentiers':''].filter(Boolean);
- if(!evs.length&&!pl.length){S.items=demoItems(p);S.live=false;render();return}
- S.items=evs.concat(pl).filter(keep);render();roadRefresh(my);
+ if(!S.items.length){S.items=demoItems(p);S.live=false}
+ render();
 }
 $('#form').addEventListener('submit',e=>{e.preventDefault();search()});
 
