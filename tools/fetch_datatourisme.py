@@ -24,7 +24,7 @@ BUDGET_S = int(os.environ.get('DT_BUDGET_SECONDS', '1080'))   # 18 min maximum
 WORKERS = int(os.environ.get('DT_WORKERS', '6'))
 PREV = os.environ.get('SITE_URL', '').rstrip('/')              # site en ligne : données de la veille en secours
 lock = threading.Lock()
-FIELDS = 'uuid,label,takesPlaceAt,offers,isLocatedAt,hasDescription,hasMainRepresentation,hasBeenCreatedBy,hasContact,lastUpdate'
+FIELDS = 'uuid,label,takesPlaceAt,offers,isLocatedAt,hasDescription,hasMainRepresentation,hasBeenCreatedBy,hasContact,hasBookingContact,lastUpdate'
 IMG = re.compile(r'^https?://\S+\.(?:jpe?g|png|webp|gif)(?:\?\S*)?$', re.I)
 nreq = 0
 
@@ -57,6 +57,61 @@ def first(v):
     return (v[0] if v else {}) if isinstance(v, list) else (v or {})
 
 URLRX = re.compile(r'^https?://\S+$')
+
+# ---------- adresse, contacts, horaires ----------
+def strs(v):
+    """Liste de chaînes à partir d'une valeur (chaîne, liste, dict multilingue)."""
+    if v is None: return []
+    if isinstance(v, list): return [x for i in v for x in strs(i)]
+    if isinstance(v, dict):
+        t = fr(v)
+        return [t] if t else []
+    v = str(v).strip()
+    return [v] if v else []
+
+def address(loc):
+    a = first(loc.get('address'))
+    street = ', '.join(strs(a.get('streetAddress')))
+    city = a.get('addressLocality') or fr((a.get('hasAddressCity') or {}).get('label'))
+    return ' '.join(x for x in [street + (',' if street else ''), a.get('postalCode') or '', city or ''] if x).strip(' ,')
+
+def contacts(o):
+    tel, mail = [], []
+    for c in (o.get('hasContact') or []) + (o.get('hasBookingContact') or []):
+        if not isinstance(c, dict): continue
+        tel += strs(c.get('telephone')); mail += strs(c.get('email'))
+    dedup = lambda l: list(dict.fromkeys(x for x in l if x))
+    return dedup(tel)[:2], dedup(mail)[:1]
+
+DAYS = [('Monday', 'lun.'), ('Tuesday', 'mar.'), ('Wednesday', 'mer.'), ('Thursday', 'jeu.'), ('Friday', 'ven.'), ('Saturday', 'sam.'), ('Sunday', 'dim.')]
+def hm(t):
+    m = re.match(r'(\d{1,2}):(\d{2})', t or '')
+    if not m: return ''
+    h, mi = int(m.group(1)), m.group(2)
+    return f'{h}h' + ('' if mi == '00' else mi)
+def ddmm(d):
+    m = re.match(r'\d{4}-(\d{2})-(\d{2})', d or '')
+    return f'{m.group(2)}/{m.group(1)}' if m else ''
+def hours(loc, today):
+    out = []
+    for s in loc.get('openingHoursSpecification') or []:
+        if not isinstance(s, dict): continue
+        until = (s.get('validThrough') or '')[:10]
+        if until and until < today: continue
+        blob = json.dumps(s)
+        days = [f for e, f in DAYS if e in blob]
+        o, c = hm(s.get('opens')), hm(s.get('closes'))
+        per = ''
+        if s.get('validFrom') or until:
+            a, b = ddmm(s.get('validFrom')), ddmm(until)
+            per = f'du {a} au {b}' if a and b and a != b else (f'le {a}' if a else '')
+            if a == '01/01' and b == '31/12': per = ''
+        txt = ' '.join(x for x in [per, (', '.join(days) if 0 < len(days) < 7 else ('tous les jours' if len(days) == 7 else '')), (f'{o}-{c}' if o and c else '')] if x)
+        info = fr(s.get('additionalInformation'))
+        if info and len(txt) < 20: txt = (txt + ' ' + info).strip()
+        if txt and txt not in out: out.append(txt)
+        if len(out) >= 3: break
+    return ' ; '.join(out)[:200]
 def find_image(o, key=''):
     """Première image trouvée : URL finissant par une extension d'image, sinon URL rangée sous une clé « locator »/« url »."""
     best = _find(o, strict=True)
@@ -85,7 +140,7 @@ def compact(o):
         except (TypeError, ValueError): return None
     addr = first(loc.get('address'))
     city = addr.get('addressLocality') or fr((addr.get('hasAddressCity') or {}).get('label'))
-    dates = [(d.get('startDate') or '', d.get('endDate') or d.get('startDate') or '', d.get('startTime') or '') for d in (o.get('takesPlaceAt') or []) if d.get('startDate')]
+    dates = [(d.get('startDate') or '', d.get('endDate') or d.get('startDate') or '', d.get('startTime') or '', d.get('endTime') or '') for d in (o.get('takesPlaceAt') or []) if d.get('startDate')]
     if not dates: return None
     dates.sort()
     desc = re.sub(r'\s+', ' ', fr(first(o.get('hasDescription')).get('shortDescription')) or fr(first(o.get('hasDescription')).get('description')))
@@ -94,15 +149,17 @@ def compact(o):
     home = contact.get('homepage')
     home = (home[0] if isinstance(home, list) and home else home) or ''
     return {
-        'id': o.get('uuid'), 't': fr(o.get('label')), 'd': desc[:260],
-        'dt': [[s, e, h[:5]] for s, e, h in dates[:40]],
+        'id': o.get('uuid'), 't': fr(o.get('label')), 'd': desc[:600],
+        'dt': [[s, e, h[:5], f[:5]] for s, e, h, f in dates[:40]],
         'la': round(lat, 5), 'lo': round(lon, 5), 'c': city,
         'p': price[:120], 'i': find_image(o.get('hasMainRepresentation')),
         'u': home if isinstance(home, str) and home.startswith('http') else '',
         'by': (o.get('hasBeenCreatedBy') or {}).get('legalName', ''), 'm': (o.get('lastUpdate') or '')[:10],
+        'a': address(loc)[:140], 'tel': contacts(o)[0], 'mail': contacts(o)[1],
     }
 
 DEADLINE = 0
+TODAY = ''
 
 def fetch_dept(dep, key, today, until):
     flt = (f'takesPlaceAt.endDate[gte]={today} AND takesPlaceAt.startDate[lte]={until} '
@@ -149,7 +206,7 @@ def ptypes(o):
         if t in PTYPES and t not in out: out.append(t)
     return out
 
-def compact_place(o):
+def compact_place(o, today=''):
     loc = first(o.get('isLocatedAt'))
     geo = loc.get('geo') or {}
     try: lat, lon = float(geo.get('latitude')), float(geo.get('longitude'))
@@ -157,16 +214,17 @@ def compact_place(o):
     addr = first(loc.get('address'))
     city = addr.get('addressLocality') or fr((addr.get('hasAddressCity') or {}).get('label'))
     hd = first(o.get('hasDescription'))
-    desc = re.sub(r'\s+', ' ', fr(hd.get('shortDescription')) or fr(hd.get('description')))
+    desc = re.sub(r'\s+', ' ', fr(hd.get('description')) or fr(hd.get('shortDescription')))
     contact = first(o.get('hasContact'))
     home = contact.get('homepage')
     home = (home[0] if isinstance(home, list) and home else home) or ''
     t = fr(o.get('label'))
     if not t: return None
-    return {'id': o.get('uuid'), 't': t, 'k': ptypes(o), 'la': round(lat, 5), 'lo': round(lon, 5), 'c': city, 'd': desc[:240],
+    return {'id': o.get('uuid'), 't': t, 'k': ptypes(o), 'la': round(lat, 5), 'lo': round(lon, 5), 'c': city, 'd': desc[:900],
             'p': fr(first(o.get('offers')).get('textPriceSpecification'))[:100],
             'u': home if isinstance(home, str) and home.startswith('http') else '',
-            'by': (o.get('hasBeenCreatedBy') or {}).get('legalName', ''), 'm': (o.get('lastUpdate') or '')[:10]}
+            'by': (o.get('hasBeenCreatedBy') or {}).get('legalName', ''), 'm': (o.get('lastUpdate') or '')[:10],
+            'a': address(loc)[:140], 'tel': contacts(o)[0], 'mail': contacts(o)[1], 'h': hours(loc, today)}
 
 def pnorm(t):
     t = re.sub(r"[^a-z0-9 ]", ' ', t.lower().translate(str.maketrans('àâäéèêëîïôöùûüç', 'aaaeeeeiioouuuc')))
@@ -192,12 +250,14 @@ def fetch_places_dept(dep, key, budget):
         d = get({'filters': flt, 'fields': PFIELDS, 'page_size': 100, 'page': page, 'lang': 'fr'}, key, API_P)
         pages = (d.get('meta') or {}).get('total_pages') or 1
         for o in d.get('objects') or []:
-            c = compact_place(o)
+            c = compact_place(o, TODAY)
             if c: items.append(c)
         page += 1
     return dedupe_places(items)
 
 def run_places(out_dir, key, today):
+    global TODAY
+    TODAY = today.isoformat()
     dest = os.path.join(out_dir, 'data', 'places'); os.makedirs(dest, exist_ok=True)
     prev = {}
     try:
@@ -207,7 +267,7 @@ def run_places(out_dir, key, today):
         pass
     # Ordre : départements jamais récupérés (Bretagne d'abord), puis les plus anciens
     missing = [d for d in DEPTS if d not in prev]
-    stale = sorted([d for d in DEPTS if d in prev], key=lambda d: prev[d].get('u', ''))
+    stale = sorted([d for d in DEPTS if d in prev], key=lambda d: (prev[d].get('v', 0) >= 2, prev[d].get('u', '')))
     order = missing + stale
     budget = {'left': PLACES_REQ}
     results, fresh = {}, set()
@@ -232,7 +292,8 @@ def run_places(out_dir, key, today):
             json.dump(items, f, ensure_ascii=False, separators=(',', ':'))
         lats = [x['la'] for x in items]; lons = [x['lo'] for x in items]
         index['depts'][dep] = {'n': len(items), 'b': [min(lats), min(lons), max(lats), max(lons)],
-                               'u': today.isoformat() if dep in fresh else prev.get(dep, {}).get('u', '')}
+                               'u': today.isoformat() if dep in fresh else prev.get(dep, {}).get('u', ''),
+                               'v': 2 if dep in fresh else prev.get(dep, {}).get('v', 1)}
         total += len(items)
     with open(os.path.join(dest, 'index.json'), 'w', encoding='utf-8') as f:
         json.dump(index, f, ensure_ascii=False, separators=(',', ':'))
