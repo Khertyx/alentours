@@ -97,6 +97,14 @@ details.more[open] summary::before{content:"–"}
 .geobox .lnk{border:0;background:none;cursor:pointer;padding:0}
 .more-btn{display:block;margin:18px auto 0}
 .dist small{color:var(--muted)}
+.info{list-style:none;margin:8px 0 2px;padding:10px 12px;background:var(--bg);border-radius:12px;display:grid;gap:5px;font-size:.88rem}
+.info li{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px}
+.info b{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.info span{overflow-wrap:anywhere}
+.info .mut{color:var(--muted);font-style:italic}
+.info a{color:var(--accent2);font-weight:600}
+.prose .doubt{font-style:italic;color:var(--muted);border-left:3px solid var(--gold,#c9a45c);padding-left:10px}
+.pbody .info{margin:4px 0 0}
 input[type=range]{width:100%;accent-color:var(--accent2)}
 .hint{color:var(--muted);font-size:.85rem;margin:6px 0 0}
 .err{color:var(--bad);font-size:.9rem;margin:0}.err:empty{display:none}
@@ -671,6 +679,26 @@ document.addEventListener('click',e=>{
  if(e.target.closest('#geoType')){geoBox('');inp.value='';S.place=null;inp.focus()}
 });
 
+/* ---------- horaires et contacts ---------- */
+const OHD={Mo:'lun.',Tu:'mar.',We:'mer.',Th:'jeu.',Fr:'ven.',Sa:'sam.',Su:'dim.',PH:'jours fériés',SH:'vacances scolaires'};
+const OHM={Jan:'janv.',Feb:'févr.',Mar:'mars',Apr:'avr.',May:'mai',Jun:'juin',Jul:'juil.',Aug:'août',Sep:'sept.',Oct:'oct.',Nov:'nov.',Dec:'déc.'};
+const hmFr=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(t||'');return m?(+m[1])+'h'+(m[2]==='00'?'':m[2]):''};
+function ohFr(s){if(!s)return'';if(/^24\/7$/.test(s.trim()))return'24 h/24, 7 j/7';
+ return s.replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH|SH)\b/g,m=>OHD[m]).replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/g,m=>OHM[m])
+  .replace(/(\d{1,2}):(\d{2})/g,(m,h,mi)=>(+h)+'h'+(mi==='00'?'':mi)).replace(/\boff\b|\bclosed\b/gi,'fermé').replace(/(\.)-(?=[a-zé])/g,'$1 à ').replace(/;\s*/g,' ; ').replace(/,(?=\S)/g,', ').replace(/\s+/g,' ').trim().slice(0,180)}
+const telHref=t=>'tel:'+String(t).replace(/[^\d+]/g,'');
+const clip=(a,n)=>(Array.isArray(a)?a:[a]).filter(Boolean).slice(0,n||2);
+/* Adresse de proximité pour les lieux sans adresse (sites naturels, monuments isolés) */
+const addrCache=new Map();
+async function fillAddr(list,my){
+ const need=list.filter(x=>!x.addr&&!x._aq&&x.lat!=null&&x.kind!=='sample').slice(0,80);if(!need.length)return;
+ need.forEach(x=>x._aq=1);let changed=false;
+ for(let i=0;i<need.length;i+=6){await Promise.all(need.slice(i,i+6).map(async x=>{const k=x.lat.toFixed(4)+','+x.lon.toFixed(4);
+  try{let v=addrCache.get(k);if(v===undefined){const j=await geoApi(`reverse?lon=${x.lon}&lat=${x.lat}&limit=1&type=street`);const f=j.features&&j.features[0];
+    v=f?((f.properties.distance!=null&&f.properties.distance>400)?'':'Près de '+f.properties.name+', ')+f.properties.postcode+' '+f.properties.city:'';addrCache.set(k,v)}
+   if(v){x.addr=v;changed=true}}catch(e){}}))}
+ if(changed&&my===seq&&S.mode==='ready')render()}
+
 /* ---------- sources de données ---------- */
 function parsePrice(t){
  const s=norm(t);if(!s)return{p:null,l:'Prix non précisé'};
@@ -682,10 +710,20 @@ function parsePrice(t){
 function classify(head,body){for(const t of [head,body]){const s=' '+norm(t)+' ',l=String(t).toLowerCase(),out=[];for(const k of ['patrimoine','spectacle','gastro','sport','famille','nature']){if(CATRX[k].test(l)||CATRX[k].test(s))out.push(k)}if(out.length)return out}return['patrimoine']}
 const clean=h=>String(h||'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
 
+function odsJson(v){if(!v)return null;if(typeof v!=='string')return v;try{return JSON.parse(v)}catch(e){return null}}
+function odsContact(r){const reg=odsJson(r.registration)||[];const tel=[],mail=[];let book='';
+ (Array.isArray(reg)?reg:[]).forEach(x=>{const v=x&&(x.value||x);if(!v||typeof v!=='string')return;if(x.type==='phone'||/^\+?[\d .]{8,}$/.test(v))tel.push(v);else if(x.type==='email'||/@/.test(v))mail.push(v);else if(/^https?:/.test(v)&&!book)book=v});
+ if(r.location_phone)tel.unshift(r.location_phone);
+ return{tel:[...new Set(tel)].slice(0,2),mail:[...new Set(mail)].slice(0,1),book,site:r.location_website||''}}
+function odsSlots(t,per){const a=odsJson(t);if(!Array.isArray(a))return'';
+ const f=d=>new Date(d).toLocaleString('fr-FR',{timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit'}).replace(':','h').replace(/h00$/,'h').replace(/^0(\d)/,'$1');
+ const day=d=>new Date(d).toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'});
+ const s=a.filter(x=>x&&x.begin&&day(x.begin)>=per.s&&day(x.begin)<=per.e).slice(0,4).map(x=>(per.s!==per.e?fr(day(x.begin))+' ':'')+f(x.begin)+(x.end?' à '+f(x.end):''));
+ return s.join(' ; ')}
 async function fetchEvents(p,per){
  const pt=`geom'POINT(${p.lon} ${p.lat})'`;
  const w=`within_distance(location_coordinates, ${pt}, ${S.radius}km) and firstdate_begin <= date'${per.e}' and lastdate_end >= date'${per.s}'`;
- const sel=`uid,title_fr,description_fr,firstdate_begin,lastdate_end,location_name,location_city,location_coordinates,keywords_fr,image,conditions_fr,canonicalurl,daterange_fr,accessibility,age_min,age_max,distance(location_coordinates, ${pt}) as dist`;
+ const sel=`uid,title_fr,description_fr,firstdate_begin,lastdate_end,location_name,location_city,location_coordinates,keywords_fr,image,conditions_fr,canonicalurl,daterange_fr,accessibility,age_min,age_max,location_address,location_phone,location_website,registration,timings,distance(location_coordinates, ${pt}) as dist`;
  const U='https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/evenements-publics-openagenda/records?';
  const page=o=>jfetch(U+new URLSearchParams({where:w,select:sel,order_by:'dist',limit:'100',offset:String(o)}),null,15000);
  const first=await page(0);let res=first.results||[];
@@ -698,7 +736,8 @@ async function fetchEvents(p,per){
   const cats=classify((r.title_fr||'')+' '+kw,clean(r.description_fr));
   return{id:'e'+r.uid,kind:'event',title:r.title_fr||'Sans titre',desc:clean(r.description_fr),cats,cat:cats[0],lat,lon,
    km:hav(p.lat,p.lon,lat,lon),ang:bearing(p.lat,p.lon,lat,lon),dateLabel:r.daterange_fr||'',venue:[r.location_name,r.location_city].filter(Boolean).join(', '),
-   price:pr.p,priceLabel:pr.l,image:r.image||'',url:r.canonicalurl||'',acc:accCodes(r.accessibility),ageMin:r.age_min,ageMax:r.age_max,kw,venueName:r.location_name||'',city:r.location_city||'',start:r.firstdate_begin,span:Math.max(0,(new Date(r.lastdate_end)-new Date(r.firstdate_begin))/864e5)}}).filter(x=>x.km<=S.radius+.3);
+   price:pr.p,priceLabel:pr.l,image:r.image||'',url:r.canonicalurl||'',acc:accCodes(r.accessibility),ageMin:r.age_min,ageMax:r.age_max,kw,venueName:r.location_name||'',city:r.location_city||'',start:r.firstdate_begin,span:Math.max(0,(new Date(r.lastdate_end)-new Date(r.firstdate_begin))/864e5),
+   addr:r.location_address||'',...odsContact(r),hours:odsSlots(r.timings,per)}}).filter(x=>x.km<=S.radius+.3);
 }
 const HRX=/ch[aâ]teau|[ée]glise|chapelle|abbaye|manoir|mus[ée]e|cath[ée]drale|\bfort\b|fortification|phare|moulin|ruines?|jardin|calvaire|croix|\btour\b|prieur[ée]|basilique|h[ôo]tel-dieu|halle|lavoir|menhir|dolmen|alignements|th[ée][aâ]tre|couvent|monast[èe]re|palais|oppidum|villa|remparts|porte |donjon|hospice|bastide|colombier|enclos|site arch|cit[ée] |m[ée]galith|tumulus|cairn|fontaine/i;
 const TYPES={marketplace:'Marché',sports_centre:'Complexe sportif',swimming_pool:'Piscine',golf_course:'Golf',ice_rink:'Patinoire',water_park:'Parc aquatique',stadium:'Stade',miniature_golf:'Mini-golf',bowling_alley:'Bowling',escape_game:'Escape game',amusement_arcade:'Salle de jeux',horse_riding:'Centre équestre',climbing:'Escalade',playground:'Aire de jeux',beach:'Plage',waterfall:'Cascade',cave_entrance:'Grotte',peak:'Sommet',aquarium:'Aquarium',megalith:'Mégalithe',tumulus:'Tumulus',museum:'Musée',attraction:'Site à visiter',viewpoint:'Point de vue',zoo:'Parc animalier',theme_park:'Parc de loisirs',gallery:'Galerie',theatre:'Théâtre',arts_centre:'Centre d’art',cinema:'Cinéma',library:'Bibliothèque',park:'Parc',garden:'Jardin',nature_reserve:'Réserve naturelle',community_centre:'Salle communale',place_of_worship:'Lieu de culte',castle:'Château',monument:'Monument',ruins:'Ruines',archaeological_site:'Site archéologique',manor:'Manoir',memorial:'Mémorial',church:'Église',chapel:'Chapelle',wayside_cross:'Calvaire ou croix',wayside_shrine:'Oratoire',fort:'Fort',city_gate:'Porte fortifiée',citywalls:'Remparts',tower:'Tour',mill:'Moulin',lighthouse:'Phare',abbey:'Abbaye',monastery:'Monastère',building:'Édifice historique'};
@@ -763,8 +802,10 @@ nwr${c}[name][waterway=waterfall];
   const pr=t.fee==='no'?{p:0,l:'Gratuit'}:parsePrice(t.charge||'');
   const wt=/^fr:/.test(t.wikipedia||'')?t.wikipedia.slice(3):'';
   const ax=(t.access||'').toLowerCase();
-  return{id:'o'+e.type+e.id,kind:'place',title:t.name,sub,mh,access:ax,open:!!(t.tourism||t.opening_hours||(t.fee&&t.fee!=='')||t.website||t['contact:website']||/^(yes|permissive|public|destination)$/.test(ax)),wikiTitle:wt,wheel:t.wheelchair||'',acc:osmAcc(t),wikidata:t.wikidata||'',startDate:t.start_date||'',desc:sub+(t['addr:city']?' à '+t['addr:city']:''),cats:[cat],cat,lat,lon,km:hav(p.lat,p.lon,lat,lon),ang:bearing(p.lat,p.lon,lat,lon),
-   dateLabel:t.opening_hours?'Horaires : '+t.opening_hours.slice(0,60):'Lieu permanent',venue:t['addr:city']||'',city:t['addr:city']||'',price:pr.p,priceLabel:pr.l==='Prix non précisé'?'Accès selon lieu':pr.l,image:'',url:t.website||t['contact:website']||''}
+  const street=[t['addr:housenumber'],t['addr:street']||t['addr:place']].filter(Boolean).join(' '),cp=[t['addr:postcode'],t['addr:city']].filter(Boolean).join(' ');
+  const addr=[street,cp].filter(Boolean).join(', ');
+  return{addr,hours:ohFr(t.opening_hours||''),tel:clip([t.phone,t['contact:phone']].filter(Boolean).join(';').split(';').map(x=>x.trim())),mail:clip([t.email||t['contact:email']],1),id:'o'+e.type+e.id,kind:'place',title:t.name,sub,mh,access:ax,open:!!(t.tourism||t.opening_hours||(t.fee&&t.fee!=='')||t.website||t['contact:website']||/^(yes|permissive|public|destination)$/.test(ax)),wikiTitle:wt,wheel:t.wheelchair||'',acc:osmAcc(t),wikidata:t.wikidata||'',startDate:t.start_date||'',desc:sub+(t['addr:city']?' à '+t['addr:city']:''),cats:[cat],cat,lat,lon,km:hav(p.lat,p.lon,lat,lon),ang:bearing(p.lat,p.lon,lat,lon),
+   dateLabel:'Lieu permanent',venue:t['addr:city']||'',city:t['addr:city']||'',price:pr.p,priceLabel:pr.l==='Prix non précisé'?'Accès selon lieu':pr.l,image:'',url:t.website||t['contact:website']||''}
  }).filter(Boolean).filter(x=>x.km<=S.radius+.3&&(x.mh||!JUNK.test(norm(x.title))));
 }
 /* Tous les lieux ayant un article Wikipédia (via Wikidata), découpés en carrés interrogés en parallèle */
@@ -873,11 +914,12 @@ async function fetchDTPlaces(p){
   const pr=e.p?parsePrice(e.p):{p:null,l:''};
   out.push({id:'p'+e.id,kind:'place',src:'dt',title:e.t,sub:ty[1],mh:false,access:'',open:true,wikiTitle:'',wheel:'',acc:[],wikidata:'',startDate:'',
    desc:e.d||(ty[1]+(e.c?' à '+e.c:'')),cats:[ty[2]],cat:ty[2],lat:e.la,lon:e.lo,km,ang:bearing(p.lat,p.lon,e.la,e.lo),dateLabel:'Lieu permanent',venue:e.c||'',city:e.c||'',
-   price:pr.p,priceLabel:e.p?(pr.p===0?'Gratuit':(pr.l==='Voir conditions'?e.p.slice(0,40):pr.l)):'Accès selon lieu',image:'',url:e.u||'',by:e.by||'',upd:e.m||''})})});
+   price:pr.p,priceLabel:e.p?(pr.p===0?'Gratuit':(pr.l==='Voir conditions'?e.p.slice(0,40):pr.l)):'Accès selon lieu',image:'',url:e.u||'',by:e.by||'',upd:e.m||'',addr:e.a||'',tel:e.tel||[],mail:e.mail||[],hours:e.h||''})})});
  return out;
 }
 function mergePlace(ex,x){
- ['wikiTitle','wikidata','image','startDate','url','wheel','city','venue'].forEach(k=>{if(!ex[k]&&x[k])ex[k]=x[k]});
+ ['wikiTitle','wikidata','image','startDate','url','wheel','city','venue','addr','hours'].forEach(k=>{if(!ex[k]&&x[k])ex[k]=x[k]});
+ ['tel','mail'].forEach(k=>{if((!ex[k]||!ex[k].length)&&x[k]&&x[k].length)ex[k]=x[k]});
  if(x.mh)ex.mh=true;if(x.open)ex.open=true;if((!ex.acc||!ex.acc.length)&&x.acc&&x.acc.length)ex.acc=x.acc;
  if(/^(private|no)$/.test(x.access||'')&&ex.src!=='dt')ex.access=x.access;
  if(ex.desc.length<60&&x.desc&&x.desc.length>ex.desc.length)ex.desc=x.desc;
@@ -933,11 +975,11 @@ async function fetchDT(p,per){
   const first=e.dt[0],last=e.dt[e.dt.length-1];
   const same=first[0]===(last[1]||last[0]);
   const dl=e.dt.length>1&&!same?(e.dt.length<=3?e.dt.map(d=>fr(d[0])).join(', '):'Du '+fr(first[0])+' au '+fr(last[1]||last[0])):(first[0]===(first[1]||first[0])?fr(first[0],{weekday:'long',day:'numeric',month:'long'}):'Du '+fr(first[0])+' au '+fr(first[1]));
-  const h=hit[0][2]?' à '+hit[0][2].replace(':','h'):'';
+  const h=hit[0][2]?' à '+hmFr(hit[0][2]):'';const hrs=hit.slice(0,3).map(d=>(per.s!==per.e?fr(d[0])+' ':'')+(d[2]?hmFr(d[2])+(d[3]?' à '+hmFr(d[3]):''):'')).filter(x=>x.trim()).join(' ; ');
   const pr=parsePrice(e.p);const cats=classify(e.t,e.d);
   out.push({id:'d'+e.id,kind:'event',src:'dt',title:e.t,desc:e.d,cats,cat:cats[0],lat:e.la,lon:e.lo,km,ang:bearing(p.lat,p.lon,e.la,e.lo),
    dateLabel:dl+h,venue:e.c||'',city:e.c||'',venueName:'',price:pr.p,priceLabel:e.p?(pr.p===0?'Gratuit':(pr.l==='Voir conditions'?e.p.slice(0,40):pr.l)):'Prix non précisé',
-   image:e.i||'',url:e.u||'',acc:[],kw:'',start:hit[0][0]+'T'+(hit[0][2]||'12:00'),span:Math.max(0,(new Date(last[1]||last[0])-new Date(first[0]))/864e5),by:e.by||'',upd:e.m||''})})});
+   image:e.i||'',url:e.u||'',acc:[],kw:'',addr:e.a||'',tel:e.tel||[],mail:e.mail||[],hours:hrs,start:hit[0][0]+'T'+(hit[0][2]||'12:00'),span:Math.max(0,(new Date(last[1]||last[0])-new Date(first[0]))/864e5),by:e.by||'',upd:e.m||''})})});
  return out;
 }
 function evSame(o,x){
@@ -971,7 +1013,7 @@ async function roadFor(list){
    ch.forEach((x,k)=>{const d=j.distances[0][k+1],t=j.durations[0][k+1];if(d!=null&&isFinite(d)){x.road=Math.max(d/1000,x.km);x.dur=Math.max(1,Math.round(t/60));changed=true}})}
   catch(e){ch.forEach(x=>x._rq=0)}}
  return changed}
-async function roadRefresh(my){const shown=visible().slice(0,S.limit);if(await roadFor(shown)&&my===seq&&S.mode==='ready')render()}
+async function roadRefresh(my){const shown=visible().slice(0,S.limit);fillAddr(shown,my);if(await roadFor(shown)&&my===seq&&S.mode==='ready')render()}
 async function search(){
  if(!S.place){const q=inp.value.trim();
   if(!q){$('#err').textContent='Indiquez un lieu pour lancer la recherche.';inp.focus();return}
@@ -1046,6 +1088,16 @@ const durTxt=m=>m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0'
 function distTxt(x){const pre=x.trail?'Accès à ':'';
  if(x.road!=null)return`${pre}${f1(x.road)} km par la route · ${durTxt(x.dur)} en voiture <small>(${f1(x.km)} km à vol d’oiseau)</small>`;
  return`${pre}${x.km<.1?'moins de 100 m':f1(x.km)+' km'} <small>à vol d’oiseau</small>`}
+function infoHtml(x){
+ const rows=[];
+ if(x.hours)rows.push(`<li><b>${x.kind==='event'?'Horaires':'Ouverture'}</b><span>${esc(x.hours)}</span></li>`);
+ else if(x.kind==='place'&&!x.trail)rows.push(`<li><b>Ouverture</b><span class="mut">Horaires non communiqués, à vérifier avant de partir</span></li>`);
+ if(x.addr)rows.push(`<li><b>Adresse</b><span>${esc(x.addr)}</span></li>`);
+ const c=[];clip(x.tel,2).forEach(t=>c.push(`<a href="${telHref(t)}">${esc(t)}</a>`));clip(x.mail,1).forEach(m=>c.push(`<a href="mailto:${esc(m)}">${esc(m)}</a>`));
+ if(x.book)c.push(`<a href="${esc(x.book)}" target="_blank" rel="noopener">Réserver</a>`);
+ const site=x.site||(x.kind==='place'&&x.url&&!/wikipedia\.org|openstreetmap\.org/.test(x.url)?x.url:'');if(site&&/^https?:/.test(site))c.push(`<a href="${esc(site)}" target="_blank" rel="noopener">Site web</a>`);
+ if(c.length)rows.push(`<li><b>Contact</b><span>${c.join(' · ')}</span></li>`);
+ return rows.length?`<ul class="info">${rows.join('')}</ul>`:''}
 function card(x,i){
  const cat=CAT[x.cat],fav=S.favs.has(x.id);
  const kind=x.trail?'Randonnée':x.kind==='place'?'Lieu':x.kind==='sample'?'Exemple':'Événement';
@@ -1060,6 +1112,7 @@ function card(x,i){
   ${x._f&&x._f.reason&&x._f.score>=1?`<span class="fit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${esc(x._f.reason)}</span>`:''}
   <div class="meta"><span>${ICON.cal}${esc(x.dateLabel||'Date à confirmer')}</span><span class="dist">${ICON.pin}${distTxt(x)}${x.venue?' · '+esc(x.venue):''}</span></div>
   ${x.desc?`<p class="desc">${esc(x.desc)}</p>`:''}
+  ${infoHtml(x)}
   ${x.by?`<p class="credit">Info ${esc(x.by)}${x.upd?', mise à jour le '+esc(fr(x.upd,{day:'numeric',month:'short',year:'numeric'})):''} · DATAtourisme</p>`:''}
   <div class="foot"><span class="price${x.price===0?' free':''}">${esc(x.priceLabel)}</span>
    ${sb}
@@ -1158,17 +1211,24 @@ function matches(name,title){const a=toks(name),b=toks(title);if(!a.length||!b.l
 const roman=n=>{const m=[[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];let r='';for(const[v,s]of m)while(n>=v){r+=s;n-=v}return r};
 function fmtTime(v){const y=parseInt(v.time.slice(0,5),10),pr=v.precision;if(pr>=9)return String(y);if(pr===8)return'années '+Math.floor(y/10)*10;if(pr===7){const c=Math.ceil(Math.abs(y)/100);return roman(c)+(c===1?'er':'e')+' siècle'+(y<0?' av. J.-C.':'')}return String(y)}
 const storyCache=new Map();
+/* Article Wikipédia : sûr (lien direct ou nom concordant), sinon le meilleur candidat, signalé comme douteux */
 async function findWikiTitle(x){
- if(x.wikiTitle)return x.wikiTitle;
+ if(x.wikiTitle)return{t:x.wikiTitle,sure:true};
  const name=x.kind==='event'?x.venueName:x.title;if(!name)return null;
  const city=x.city||'';
- try{const j=await jfetch(wq({action:'query',list:'search',srsearch:name+' '+city,srlimit:4,srnamespace:0}),null,7000);
-  const hit=((j.query&&j.query.search)||[]).find(r=>matches(name,r.title));return hit?hit.title:null}catch(e){return null}
+ try{const j=await jfetch(wq({action:'query',list:'search',srsearch:name+' '+city,srlimit:5,srnamespace:0}),null,7000);
+  const res=(j.query&&j.query.search)||[];
+  /* sûr seulement si le titre reprend au moins la moitié des mots du nom du lieu */
+  const nt=toks(name),sureM=t=>{const b=toks(t),ov=nt.filter(w=>b.includes(w)).length;return ov>=1&&ov>=Math.ceil(nt.length/2)};
+  const hit=res.find(r=>matches(name,r.title)&&sureM(r.title));if(hit)return{t:hit.title,sure:true};
+  const a=toks(name);const loose=res.find(r=>a.some(w=>toks(r.title).includes(w)))||res[0];
+  return loose?{t:loose.title,sure:false}:null}catch(e){return null}
 }
 async function fetchArticle(t){
- const j=await jfetch(wq({action:'query',prop:'extracts|pageprops|info|pageimages',explaintext:1,exsectionformat:'plain',exchars:3600,inprop:'url',ppprop:'wikibase_item',piprop:'thumbnail',pithumbsize:900,redirects:1,titles:t}),null,9000);
+ const j=await jfetch(wq({action:'query',prop:'extracts|pageprops|info|pageimages|coordinates',explaintext:1,exsectionformat:'plain',exchars:3600,inprop:'url',ppprop:'wikibase_item',piprop:'thumbnail',pithumbsize:900,redirects:1,titles:t}),null,9000);
  const pg=Object.values((j.query&&j.query.pages)||{})[0];if(!pg||pg.missing!==undefined)return null;
- return{title:pg.title,url:pg.fullurl,text:pg.extract||'',thumb:pg.thumbnail&&pg.thumbnail.source,qid:pg.pageprops&&pg.pageprops.wikibase_item}
+ const co=pg.coordinates&&pg.coordinates[0];
+ return{title:pg.title,url:pg.fullurl,text:pg.extract||'',thumb:pg.thumbnail&&pg.thumbnail.source,qid:pg.pageprops&&pg.pageprops.wikibase_item,lat:co&&co.lat,lon:co&&co.lon}
 }
 async function fetchFacts(qid){
  if(!qid)return[];
@@ -1188,9 +1248,13 @@ async function gatherStory(x){
  if(storyCache.has(x.id))return storyCache.get(x.id);
  const out={article:null,facts:[],online:true};
  try{
-  const t=await findWikiTitle(x);
-  if(t){out.article=await fetchArticle(t);
-   const qid=(out.article&&out.article.qid)||x.wikidata;
+  const f=await findWikiTitle(x);
+  if(f){out.article=await fetchArticle(f.t).catch(()=>new Promise(r=>setTimeout(r,1500)).then(()=>fetchArticle(f.t)));
+   if(out.article){out.article.sure=f.sure;
+    /* un article dont le lieu est à plus de 3 km n'est probablement pas le bon */
+    if(out.article.lat!=null&&x.lat!=null&&hav(x.lat,x.lon,out.article.lat,out.article.lon)>3)out.article.sure=false;
+    if(!out.article.sure&&!(out.article.text||'').trim())out.article=null}
+   const qid=(out.article&&out.article.sure&&out.article.qid)||x.wikidata;
    try{out.facts=await fetchFacts(qid)}catch(e){}}
   else if(x.wikidata){try{out.facts=await fetchFacts(x.wikidata)}catch(e){}}
  }catch(e){out.online=false}
@@ -1239,8 +1303,12 @@ async function openStory(id,opener){
  <div class="pbody"><div class="badges"><span class="tag" style="--c:${cat.c}">${cat.label}</span>${x.mh?'<span class="badge mh">Monument historique</span>':''}${x.sub?`<span class="badge">${esc(x.sub)}</span>`:''}</div>
  <h2 id="dTitle">${esc(heading)}</h2>
  ${x.kind==='event'?`<p class="src" style="margin:0">Événement : ${esc(x.title)}. Voici l’histoire du lieu qui l’accueille${x.city?', à '+esc(x.city):''}.</p>`:''}`;
- if(paras.length)h+=`<div><h4>Le récit</h4><div class="prose">${paras.map(t=>`<p>${esc(t)}</p>`).join('')}</div><p class="src">Source : <a href="${esc(ar.url)}" target="_blank" rel="noopener">Wikipédia, article « ${esc(ar.title)} »</a> (licence CC BY-SA). L’extrait est abrégé.</p></div>`;
- else h+=`<div class="aibox"><b>${s.online?'Aucun article fiable trouvé pour ce lieu.':'Les sources en ligne sont inaccessibles pour le moment.'}</b><p class="src" style="margin:6px 0 0">${s.online?'Plutôt que d’inventer une histoire, Alentours n’affiche rien sans source. Les liens ci-dessous permettent de chercher dans les bases officielles.':'Réessayez dans un instant, ou utilisez les liens ci-dessous.'}</p></div>`;
+ const official=x.desc&&x.desc.length>40&&x.desc!==x.sub&&(x.by||x.src==='dt'||x.kind==='event');
+ if(official)h+=`<div><h4>Présentation</h4><div class="prose"><p>${esc(x.desc)}</p></div><p class="src">Source : ${x.by?esc(x.by)+', via DATAtourisme':x.kind==='event'?'l’organisateur, via OpenAgenda':'OpenStreetMap'}${x.upd?' · mise à jour le '+esc(fr(x.upd,{day:'numeric',month:'short',year:'numeric'})):''}.</p></div>`;
+ h+=infoHtml(x);
+ if(paras.length){const doubt=!ar.sure;
+  h+=`<div><h4>${doubt?'Ce que dit Wikipédia':'Le récit'}</h4><div class="prose">${doubt?'<p class="doubt">(Nous avons des doutes sur la fiabilité de cette information : l’article trouvé pourrait concerner un autre lieu ou un sujet voisin. Vérifiez avant de vous y fier.)</p>':''}${paras.map(t=>`<p>${esc(t)}</p>`).join('')}</div><p class="src">Source : <a href="${esc(ar.url)}" target="_blank" rel="noopener">Wikipédia, article « ${esc(ar.title)} »</a> (licence CC BY-SA). L’extrait est abrégé.</p></div>`}
+ else if(!official)h+=`<div class="aibox"><b>${s.online?'Aucun article trouvé pour ce lieu.':'Les sources en ligne sont inaccessibles pour le moment.'}</b><p class="src" style="margin:6px 0 0">${s.online?'Les liens ci-dessous permettent de chercher dans les bases officielles.':'Réessayez dans un instant, ou utilisez les liens ci-dessous.'}</p></div>`;
  if(s.facts.length)h+=`<div><h4>Repères</h4><div class="facts">${s.facts.map(f=>`<div class="fact"><span>${esc(f.k)}</span><b>${esc(f.v)}</b></div>`).join('')}</div><p class="src">Sources : Wikidata${x.mh?', base Mérimée':''}, OpenStreetMap.</p></div>`;
  h+=`<div id="storyAI"></div><div><h4>Aller plus loin</h4><div class="links"><button type="button" class="lnk rep" data-report2="${esc(x.id)}">Signaler un lieu fermé ou une erreur</button>${ar?`<a class="lnk" href="${esc(ar.url)}" target="_blank" rel="noopener">Lire l’article complet</a>`:''}${(ar&&ar.qid)||x.wikidata?`<a class="lnk" href="https://www.wikidata.org/wiki/${esc((ar&&ar.qid)||x.wikidata)}" target="_blank" rel="noopener">Fiche Wikidata</a>`:''}<a class="lnk" href="${popUrl(x)}" target="_blank" rel="noopener">Chercher dans la base Mérimée (POP)</a>${x.lat!=null?`<a class="lnk" href="https://www.openstreetmap.org/?mlat=${x.lat}&mlon=${x.lon}#map=17/${x.lat}/${x.lon}" target="_blank" rel="noopener">Voir sur OpenStreetMap</a>`:''}</div></div></div>`;
  $('#dBody').innerHTML=h;$('#drawer .close').focus();
@@ -1249,7 +1317,7 @@ async function openStory(id,opener){
 }
 async function askStory(smp,x,s){
  const b=$('#storyBtn');b.disabled=true;b.textContent='L’assistant rédige…';
- const src=(s.article?s.article.text.slice(0,3200):'(aucun extrait)'),facts=s.facts.map(f=>f.k+' : '+f.v).join(' ; ')||'(aucun)';
+ const src=((curStory&&curStory.desc&&curStory.desc.length>40)?'Présentation officielle : '+curStory.desc+'\n\n':'')+(s.article?(s.article.sure?'':'(Article Wikipédia dont la correspondance avec ce lieu est incertaine : ne l’utilise que si le contenu correspond clairement au lieu.)\n')+s.article.text.slice(0,3200):'(aucun extrait)'),facts=s.facts.map(f=>f.k+' : '+f.v).join(' ; ')||'(aucun)';
  const name=x.kind==='event'&&x.venueName?x.venueName:x.title;
  const prompt=`Tu es historien du patrimoine français et tu écris pour des visiteurs curieux, en français clair, sans jargon.
 Lieu : ${name}${x.city?' ('+x.city+')':''}${x.sub?', type : '+x.sub:''}.
