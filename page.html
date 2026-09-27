@@ -88,7 +88,15 @@ details.more summary{cursor:pointer;font-weight:700;list-style:none;display:flex
 details.more summary::-webkit-details-marker{display:none}
 details.more summary::before{content:"+";display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--surface2);font-weight:700}
 details.more[open] summary::before{content:"–"}
-.more-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:16px}
+.more-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:10px}
+.refine{border-top:1px solid var(--line);padding-top:18px}
+.lbl.sm{font-size:.72rem;opacity:.85}
+.geobox{background:var(--surface2);border-radius:14px;padding:12px 14px;font-size:.92rem;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.geobox b{font-weight:700}
+.geobox .cta{padding:8px 14px}
+.geobox .lnk{border:0;background:none;cursor:pointer;padding:0}
+.more-btn{display:block;margin:18px auto 0}
+.dist small{color:var(--muted)}
 input[type=range]{width:100%;accent-color:var(--accent2)}
 .hint{color:var(--muted);font-size:.85rem;margin:6px 0 0}
 .err{color:var(--bad);font-size:.9rem;margin:0}.err:empty{display:none}
@@ -388,7 +396,7 @@ footer{background:var(--surface2);border-top:1px solid var(--line);padding-block
   <div class="wrap hero-inner">
     <span class="eyebrow">Sorties · Patrimoine · Terroirs</span>
     <h1 id="h1">Que faire <em>autour de vous</em> ?</h1>
-    <p>Balades, châteaux, musées, marchés et concerts. Tout ce qui se passe dans un rayon de 20&nbsp;km, aujourd’hui ou le temps d’un week-end.</p>
+    <p>Événements, musées, églises, sites historiques, marchés, sport, balades et sentiers de randonnée. Du plus proche au plus loin, jusqu’à 100&nbsp;km, aujourd’hui ou le temps d’un week-end.</p>
     <div class="pros">
       <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Événements du jour</span>
       <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Histoire de chaque lieu</span>
@@ -415,6 +423,7 @@ footer{background:var(--surface2);border-top:1px solid var(--line);padding-block
       </button>
     </div>
     <p class="err" id="err" role="alert"></p>
+    <div class="geobox" id="geoBox" hidden></div>
 
     <div>
       <span class="lbl">Quand ?</span>
@@ -427,49 +436,27 @@ footer{background:var(--surface2);border-top:1px solid var(--line);padding-block
       </div>
     </div>
 
-    <div>
-      <span class="lbl">Avec qui ?</span>
-      <div class="chips" id="who"></div>
-      <div id="kidAge" hidden style="margin-top:12px"><span class="lbl">Âge des enfants</span><div class="chips" id="ages"></div></div>
-      <div id="disabBox" hidden style="margin-top:12px"><span class="lbl">Besoin d’accessibilité</span><div class="chips" id="disabs"></div></div>
-      <p class="hint" id="whoHint"></p>
-    </div>
-
-    <div>
-      <span class="lbl">Sélections patrimoine</span>
-      <div class="chips" id="colls"></div>
-      <p class="hint">Châteaux, musées, monuments et lieux historiques. Plusieurs choix possibles, pour tous les groupes.</p>
-    </div>
-
-    <div>
-      <span class="lbl">Vos envies (facultatif)</span>
-      <div class="chips" id="cats"></div>
-    </div>
-
-    <details class="more" id="more">
-      <summary>Affiner : distance, budget, confort</summary>
+    <div class="refine">
+      <span class="lbl">Affiner : distance, budget, accessibilité</span>
       <div class="more-grid">
         <div>
-          <span class="lbl">Distance maximale</span>
-          <input type="range" id="radius" min="2" max="20" step="1" value="20" aria-label="Distance maximale en kilomètres">
-          <p class="hint" id="radiusOut">Jusqu’à 20 km</p>
+          <span class="lbl sm">Distance maximale</span>
+          <input type="range" id="radius" min="2" max="100" step="1" value="50" aria-label="Distance maximale en kilomètres">
+          <p class="hint" id="radiusOut">Jusqu’à 50 km autour du point de départ</p>
         </div>
         <div>
-          <span class="lbl">Budget par personne (facultatif)</span>
+          <span class="lbl sm">Budget par personne (facultatif)</span>
           <div class="chips" id="prices"></div>
         </div>
         <div>
-          <span class="lbl">Confort et rythme (facultatif)</span>
+          <span class="lbl sm">Accessibilité (facultatif)</span>
           <div class="chips">
-            <button type="button" class="chip" id="accChip" aria-pressed="false">Accessible (fauteuil, poussette)</button>
-            <button type="button" class="chip" id="inChip" aria-pressed="false">À l’abri de la pluie</button>
-            <button type="button" class="chip" id="paceCalm" data-pace="calm" aria-pressed="false">Tranquille</button>
-            <button type="button" class="chip" id="paceLively" data-pace="lively" aria-pressed="false">Dynamique</button>
+            <button type="button" class="chip" id="accChip" aria-pressed="false">Accessible fauteuil, poussette, etc.</button>
           </div>
-          <p class="hint">« Accessible » s’appuie sur OpenStreetMap, parfois incomplet.</p>
+          <p class="hint">Garde les lieux et événements signalés accessibles (OpenStreetMap, organisateurs).</p>
         </div>
       </div>
-    </details>
+    </div>
   </form>
 
   <main id="results" aria-live="polite">
@@ -478,8 +465,8 @@ footer{background:var(--surface2);border-top:1px solid var(--line);padding-block
 
   <section class="why" aria-label="Pourquoi Alentours">
     <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><h4>Une seule recherche</h4><p>Événements datés et sites à visiter, réunis autour du point choisi.</p></div>
-    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><h4>Vos critères, sans obligation</h4><p>Seul le lieu est requis. Groupe, distance, budget et envies affinent la liste.</p></div>
-    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg><h4>Sources ouvertes</h4><p>OpenAgenda, DATAtourisme, OpenStreetMap, Wikipédia et Open-Meteo. Aucune donnée personnelle conservée.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><h4>Du plus proche au plus loin</h4><p>Distances réelles par la route depuis votre point de départ, jusqu’à 100 km.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg><h4>Sources ouvertes</h4><p>OpenAgenda, DATAtourisme, OpenStreetMap, Wikipédia et Wikidata, Open-Meteo, OSRM. Aucune donnée personnelle conservée.</p></div>
   </section>
 </div>
 <footer><div class="wrap">Alentours. Données d’événements OpenAgenda et DATAtourisme (licences ouvertes), lieux © contributeurs OpenStreetMap, météo Open-Meteo. Vérifiez horaires et tarifs auprès de l’organisateur.</div></footer>
@@ -517,7 +504,7 @@ const PRICES=[{id:'free',label:'Gratuit',min:0,max:0},{id:'p1',label:'Jusqu’à
 const CITIES=[['Rennes',48.1173,-1.6778,'Ille-et-Vilaine'],['Pléchâtel',47.9,-1.7,'Ille-et-Vilaine'],['Bruz',48.0244,-1.7466,'Ille-et-Vilaine'],['Redon',47.6517,-2.0847,'Ille-et-Vilaine'],['Fougères',48.3524,-1.2004,'Ille-et-Vilaine'],['Vitré',48.1242,-1.2073,'Ille-et-Vilaine'],['Saint-Malo',48.6493,-2.0257,'Ille-et-Vilaine'],['Dinan',48.4553,-2.0497,'Côtes-d’Armor'],['Saint-Brieuc',48.5136,-2.7603,'Côtes-d’Armor'],['Lannion',48.7326,-3.4592,'Côtes-d’Armor'],['Brest',48.3904,-4.4861,'Finistère'],['Quimper',47.9961,-4.1024,'Finistère'],['Lorient',47.7482,-3.3702,'Morbihan'],['Vannes',47.6582,-2.7608,'Morbihan'],['Nantes',47.2184,-1.5536,'Loire-Atlantique'],['Angers',47.4784,-0.5632,'Maine-et-Loire'],['Le Mans',48.0061,0.1996,'Sarthe'],['Caen',49.1829,-0.3707,'Calvados'],['Tours',47.3941,0.6848,'Indre-et-Loire'],['Paris',48.8566,2.3522,'Île-de-France'],['Lille',50.6292,3.0573,'Nord'],['Strasbourg',48.5734,7.7521,'Bas-Rhin'],['Lyon',45.764,4.8357,'Rhône'],['Annecy',45.8992,6.1294,'Haute-Savoie'],['Marseille',43.2965,5.3698,'Bouches-du-Rhône'],['Nice',43.7102,7.262,'Alpes-Maritimes'],['Montpellier',43.6108,3.8767,'Hérault'],['Toulouse',43.6047,1.4442,'Haute-Garonne'],['Bordeaux',44.8378,-0.5792,'Gironde'],['Biarritz',43.4832,-1.5586,'Pyrénées-Atlantiques']].map(a=>({name:a[0],lat:a[1],lon:a[2],ctx:a[3]}));
 
 /* ---------- état ---------- */
-const S={disab:'motor',hiddenAccess:0,coll:new Set(),who:'',kidAge:6,pace:'',accessible:false,indoor:false,hiddenWho:0,hiddenNoAccess:0,showAllWho:false,includeNoAccess:false,mh:false,nStops:4,seed:1,route:null,ideaMap:{},place:null,when:'today',d1:'',d2:'',radius:20,prices:new Set(),cats:new Set(),sort:'rel',view:'list',kind:'all',items:[],mode:'idle',hiddenNoPrice:0,includeNoPrice:false,favOnly:false,wx:[],favs:new Set(store.get('alentours.favs',[])),period:null,hl:null};
+const S={disab:'motor',hiddenAccess:0,coll:new Set(),who:'',kidAge:6,pace:'',accessible:false,indoor:false,hiddenWho:0,hiddenNoAccess:0,showAllWho:false,includeNoAccess:false,mh:false,nStops:4,seed:1,route:null,ideaMap:{},place:null,when:'today',d1:'',d2:'',radius:50,limit:60,prices:new Set(),cats:new Set(),sort:'km',view:'list',kind:'all',items:[],mode:'idle',hiddenNoPrice:0,includeNoPrice:false,favOnly:false,wx:[],favs:new Set(store.get('alentours.favs',[])),period:null,hl:null};
 
 /* ---------- dates (Europe/Paris) ---------- */
 const parisToday=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'});
@@ -611,17 +598,8 @@ function heritageStrip(){
 function drawChips(){
  $('#when').innerHTML=WHEN.map(([id,l])=>`<button type="button" class="chip" data-when="${id}" aria-pressed="${S.when===id}">${l}</button>`).join('');
  $('#prices').innerHTML=PRICES.map(p=>`<button type="button" class="chip" data-price="${p.id}" aria-pressed="${S.prices.has(p.id)}">${p.label}</button>`).join('');
- $('#cats').innerHTML=CATS.map(c=>`<button type="button" class="chip" style="--c:${c.c}" data-cat="${c.id}" aria-pressed="${S.cats.has(c.id)}"><span class="dot"></span>${c.label}</button>`).join('');
  $('#dates').hidden=S.when!=='date';
- $('#who').innerHTML=WHO.map(([id,l])=>`<button type="button" class="chip" data-who="${id}" aria-pressed="${S.who===id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PIC[id]||''}</svg>${l}</button>`).join('');
- $('#colls').innerHTML=COLL.map(([id,l])=>`<button type="button" class="chip" data-coll="${id}" aria-pressed="${S.coll.has(id)}">${l}</button>`).join('');
- $('#kidAge').hidden=S.who!=='kids';
- $('#disabBox').hidden=S.who!=='access';
- $('#disabs').innerHTML=DISAB.map(([v,l])=>`<button type="button" class="chip" data-disab="${v}" aria-pressed="${S.disab===v}">${l}</button>`).join('');
- $('#ages').innerHTML=AGES.map(([v,l])=>`<button type="button" class="chip" data-age="${v}" aria-pressed="${S.kidAge===v}">${l}</button>`).join('');
- $('#whoHint').textContent=S.who?WHOHINT[S.who]:'Facultatif. Adapte le classement, masque ce qui ne convient pas et règle le parcours du jour.';
- $('#accChip').setAttribute('aria-pressed',S.accessible);$('#inChip').setAttribute('aria-pressed',S.indoor);
- $('#paceCalm').setAttribute('aria-pressed',S.pace==='calm');$('#paceLively').setAttribute('aria-pressed',S.pace==='lively');
+ $('#accChip').setAttribute('aria-pressed',S.accessible);
 }
 document.addEventListener('click',e=>{
  const b=e.target.closest('[data-when],[data-price],[data-cat]');if(!b)return;
@@ -632,15 +610,24 @@ document.addEventListener('click',e=>{
 });
 $('#d1').addEventListener('change',e=>{S.d1=e.target.value;if(S.mode==='ready')search()});
 $('#d2').addEventListener('change',e=>{S.d2=e.target.value;if(S.mode==='ready')search()});
-$('#radius').addEventListener('input',e=>{S.radius=+e.target.value;$('#radiusOut').textContent='Jusqu’à '+S.radius+' km'});
+$('#radius').addEventListener('input',e=>{S.radius=+e.target.value;$('#radiusOut').textContent='Jusqu’à '+S.radius+' km autour du point de départ'});
 $('#radius').addEventListener('change',()=>{if(S.mode==='ready')search()});
 
 /* ---------- géocodage ---------- */
+/* Géocodeur national : Géoplateforme IGN (successeur de l'API Adresse), repli sur l'ancienne adresse */
+async function geoApi(path){try{return await jfetch('https://data.geopf.fr/geocodage/'+path,null,6000)}catch(e){return await jfetch('https://api-adresse.data.gouv.fr/'+path,null,6000)}}
 async function geocode(q){
  q=q.trim();if(q.length<2)return[];
  try{
-  const j=await jfetch('https://api-adresse.data.gouv.fr/search/?limit=5&q='+encodeURIComponent(q),null,5000);
-  const r=(j.features||[]).map(f=>({name:f.properties.label,lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],ctx:f.properties.context||''}));
+  const [j,m]=await Promise.all([geoApi('search/?limit=10&q='+encodeURIComponent(q)),
+   geoApi('search/?type=municipality&limit=5&q='+encodeURIComponent(q)).catch(()=>({features:[]}))]);
+  /* Une commune qui porte exactement ce nom passe avant une rue ou un lieu-dit homonyme */
+  const nq=norm(q).replace(/[^a-z0-9]+/g,' ').trim(),seen=new Set();
+  const all=(m.features||[]).concat(j.features||[]).filter(f=>{const k=f.properties.id||f.properties.label;if(seen.has(k))return false;seen.add(k);return true});
+  const rank=f=>{const pr=f.properties,nm=norm(pr.name||pr.city||'').replace(/[^a-z0-9]+/g,' ').trim(),muni=pr.type==='municipality';
+   return(muni&&nm===nq?0:nm===nq?1:muni&&nm.startsWith(nq)?2:3)-(pr.score||0)*.5-Math.min(pr.population||0,5e5)/1e7};
+  all.sort((a,b)=>rank(a)-rank(b));
+  const r=all.slice(0,6).map(f=>({name:f.properties.label,lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],ctx:f.properties.context||''}));
   if(r.length)return r;
  }catch(e){}
  try{
@@ -659,12 +646,29 @@ sl.addEventListener('mousedown',e=>{const li=e.target.closest('li');if(!li)retur
 function pick(c){S.place=c;inp.value=c.name;sl.hidden=true;inp.setAttribute('aria-expanded','false');$('#err').textContent=''}
 document.addEventListener('click',e=>{if(!e.target.closest('.field'))sl.hidden=true});
 inp.addEventListener('keydown',e=>{if(e.key==='Escape')sl.hidden=true});
+async function revGeo(lat,lon){try{const j=await geoApi(`reverse?lon=${lon}&lat=${lat}&limit=1`);const f=j.features&&j.features[0];if(f)return f.properties.label}catch(e){}return''}
+const fmtAcc=a=>a<1000?'± '+Math.round(a)+' m':'± '+(a/1000).toFixed(a<10000?1:0).replace('.',',')+' km';
+function geoBox(h){const b=$('#geoBox');if(!h){b.hidden=true;b.innerHTML='';return}b.innerHTML=h;b.hidden=false}
+let geoCand=null;
 $('#geo').addEventListener('click',()=>{
- const err=$('#err');err.textContent='';
- if(!navigator.geolocation){err.textContent='La localisation n’est pas disponible ici. Saisissez une ville.';return}
- $('#geo').textContent='Recherche…';
- navigator.geolocation.getCurrentPosition(p=>{$('#geo').textContent='Ma position';pick({name:'Ma position actuelle',lat:p.coords.latitude,lon:p.coords.longitude,ctx:''});search()},
-  ()=>{$('#geo').textContent='Ma position';err.textContent='Localisation refusée ou indisponible. Saisissez une ville, un village ou une adresse.'},{timeout:8000,maximumAge:60000});
+ const err=$('#err');err.textContent='';geoBox('');
+ if(!navigator.geolocation){err.textContent='La localisation n’est pas disponible ici. Saisissez une ville ou une adresse.';return}
+ $('#geo').textContent='Localisation…';
+ navigator.geolocation.getCurrentPosition(async p=>{
+  $('#geo').textContent='Ma position';
+  const lat=p.coords.latitude,lon=p.coords.longitude,acc=p.coords.accuracy||99999;
+  const label=await revGeo(lat,lon)||'Ma position';
+  geoCand={name:label,lat,lon,ctx:'',acc};
+  const map=`https://www.openstreetmap.org/?mlat=${lat.toFixed(5)}&mlon=${lon.toFixed(5)}#map=15/${lat.toFixed(5)}/${lon.toFixed(5)}`;
+  if(acc>1000){
+   geoBox(`<span>Position approximative : <b>${esc(label)}</b> (${fmtAcc(acc)}). Sur ordinateur, le navigateur devine souvent la position à partir du réseau, avec plusieurs kilomètres d’écart.</span><button type="button" class="cta" id="geoOk">C’est bien ici</button><button type="button" class="lnk" id="geoType">Saisir mon adresse</button><a class="lnk" href="${map}" target="_blank" rel="noopener">Vérifier sur la carte</a>`);
+   return}
+  pick(geoCand);geoBox(`<span>Départ : <b>${esc(label)}</b> (${fmtAcc(acc)})</span><a class="lnk" href="${map}" target="_blank" rel="noopener">Vérifier sur la carte</a>`);search()},
+  ()=>{$('#geo').textContent='Ma position';err.textContent='Localisation refusée ou indisponible. Saisissez une ville, un village ou une adresse.'},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+});
+document.addEventListener('click',e=>{
+ if(e.target.closest('#geoOk')&&geoCand){pick(geoCand);geoBox(`<span>Départ : <b>${esc(geoCand.name)}</b> (${fmtAcc(geoCand.acc)})</span>`);search();return}
+ if(e.target.closest('#geoType')){geoBox('');inp.value='';S.place=null;inp.focus()}
 });
 
 /* ---------- sources de données ---------- */
@@ -679,63 +683,153 @@ function classify(head,body){for(const t of [head,body]){const s=' '+norm(t)+' '
 const clean=h=>String(h||'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
 
 async function fetchEvents(p,per){
- const w=`within_distance(location_coordinates, geom'POINT(${p.lon} ${p.lat})', ${S.radius}km) and firstdate_begin <= date'${per.e}' and lastdate_end >= date'${per.s}'`;
- const q=new URLSearchParams({where:w,limit:'100',order_by:'firstdate_begin desc',select:'uid,title_fr,description_fr,firstdate_begin,lastdate_end,location_name,location_city,location_coordinates,keywords_fr,image,conditions_fr,canonicalurl,daterange_fr,accessibility,age_min,age_max'});
- const j=await jfetch('https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/evenements-publics-openagenda/records?'+q,null,10000);
+ const pt=`geom'POINT(${p.lon} ${p.lat})'`;
+ const w=`within_distance(location_coordinates, ${pt}, ${S.radius}km) and firstdate_begin <= date'${per.e}' and lastdate_end >= date'${per.s}'`;
+ const sel=`uid,title_fr,description_fr,firstdate_begin,lastdate_end,location_name,location_city,location_coordinates,keywords_fr,image,conditions_fr,canonicalurl,daterange_fr,accessibility,age_min,age_max,distance(location_coordinates, ${pt}) as dist`;
+ const U='https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/evenements-publics-openagenda/records?';
+ const page=o=>jfetch(U+new URLSearchParams({where:w,select:sel,order_by:'dist',limit:'100',offset:String(o)}),null,15000);
+ const first=await page(0);let res=first.results||[];
+ const total=Math.min(first.total_count||0,2000),offs=[];for(let o=100;o<total;o+=100)offs.push(o);
+ for(let k=0;k<offs.length;k+=5){const r=await Promise.allSettled(offs.slice(k,k+5).map(page));r.forEach(x=>{if(x.status==='fulfilled')res=res.concat(x.value.results||[])})}
  const seen=new Set();
- return(j.results||[]).filter(r=>{if(!r.location_coordinates)return false;const k=norm((r.title_fr||'')+'|'+(r.location_name||'')+'|'+(r.daterange_fr||''));if(seen.has(r.uid)||seen.has(k))return false;seen.add(r.uid);seen.add(k);return true}).map(r=>{
+ return res.filter(r=>{if(!r.location_coordinates||seen.has(r.uid))return false;seen.add(r.uid);return true}).map(r=>{
   const lat=r.location_coordinates.lat,lon=r.location_coordinates.lon;
   const pr=parsePrice(r.conditions_fr);const kw=(r.keywords_fr||[]).join(' ');
   const cats=classify((r.title_fr||'')+' '+kw,clean(r.description_fr));
   return{id:'e'+r.uid,kind:'event',title:r.title_fr||'Sans titre',desc:clean(r.description_fr),cats,cat:cats[0],lat,lon,
    km:hav(p.lat,p.lon,lat,lon),ang:bearing(p.lat,p.lon,lat,lon),dateLabel:r.daterange_fr||'',venue:[r.location_name,r.location_city].filter(Boolean).join(', '),
-   price:pr.p,priceLabel:pr.l,image:r.image||'',url:r.canonicalurl||'',acc:accCodes(r.accessibility),ageMin:r.age_min,ageMax:r.age_max,kw,venueName:r.location_name||'',city:r.location_city||'',start:r.firstdate_begin,span:Math.max(0,(new Date(r.lastdate_end)-new Date(r.firstdate_begin))/864e5)}}).filter(x=>x.km<=S.radius+.5);
+   price:pr.p,priceLabel:pr.l,image:r.image||'',url:r.canonicalurl||'',acc:accCodes(r.accessibility),ageMin:r.age_min,ageMax:r.age_max,kw,venueName:r.location_name||'',city:r.location_city||'',start:r.firstdate_begin,span:Math.max(0,(new Date(r.lastdate_end)-new Date(r.firstdate_begin))/864e5)}}).filter(x=>x.km<=S.radius+.3);
 }
 const HRX=/ch[aâ]teau|[ée]glise|chapelle|abbaye|manoir|mus[ée]e|cath[ée]drale|\bfort\b|fortification|phare|moulin|ruines?|jardin|calvaire|croix|\btour\b|prieur[ée]|basilique|h[ôo]tel-dieu|halle|lavoir|menhir|dolmen|alignements|th[ée][aâ]tre|couvent|monast[èe]re|palais|oppidum|villa|remparts|porte |donjon|hospice|bastide|colombier|enclos|site arch|cit[ée] |m[ée]galith|tumulus|cairn|fontaine/i;
-const TYPES={museum:'Musée',attraction:'Site à visiter',viewpoint:'Point de vue',zoo:'Parc animalier',theme_park:'Parc de loisirs',gallery:'Galerie',theatre:'Théâtre',arts_centre:'Centre d’art',cinema:'Cinéma',library:'Bibliothèque',park:'Parc',garden:'Jardin',nature_reserve:'Réserve naturelle',community_centre:'Salle communale',place_of_worship:'Lieu de culte',castle:'Château',monument:'Monument',ruins:'Ruines',archaeological_site:'Site archéologique',manor:'Manoir',memorial:'Mémorial',church:'Église',chapel:'Chapelle',wayside_cross:'Calvaire ou croix',wayside_shrine:'Oratoire',fort:'Fort',city_gate:'Porte fortifiée',citywalls:'Remparts',tower:'Tour',mill:'Moulin',lighthouse:'Phare',abbey:'Abbaye',monastery:'Monastère',building:'Édifice historique'};
+const TYPES={marketplace:'Marché',sports_centre:'Complexe sportif',swimming_pool:'Piscine',golf_course:'Golf',ice_rink:'Patinoire',water_park:'Parc aquatique',stadium:'Stade',miniature_golf:'Mini-golf',bowling_alley:'Bowling',escape_game:'Escape game',amusement_arcade:'Salle de jeux',horse_riding:'Centre équestre',climbing:'Escalade',playground:'Aire de jeux',beach:'Plage',waterfall:'Cascade',cave_entrance:'Grotte',peak:'Sommet',aquarium:'Aquarium',megalith:'Mégalithe',tumulus:'Tumulus',museum:'Musée',attraction:'Site à visiter',viewpoint:'Point de vue',zoo:'Parc animalier',theme_park:'Parc de loisirs',gallery:'Galerie',theatre:'Théâtre',arts_centre:'Centre d’art',cinema:'Cinéma',library:'Bibliothèque',park:'Parc',garden:'Jardin',nature_reserve:'Réserve naturelle',community_centre:'Salle communale',place_of_worship:'Lieu de culte',castle:'Château',monument:'Monument',ruins:'Ruines',archaeological_site:'Site archéologique',manor:'Manoir',memorial:'Mémorial',church:'Église',chapel:'Chapelle',wayside_cross:'Calvaire ou croix',wayside_shrine:'Oratoire',fort:'Fort',city_gate:'Porte fortifiée',citywalls:'Remparts',tower:'Tour',mill:'Moulin',lighthouse:'Phare',abbey:'Abbaye',monastery:'Monastère',building:'Édifice historique'};
 const wq=(o)=>'https://fr.wikipedia.org/w/api.php?format=json&origin=*&'+new URLSearchParams(o);
 /* Doublons : même lieu venant de sources différentes (office de tourisme, OpenStreetMap, Wikipédia) */
 const STOPW=new Set('le la les de du des d l et a au aux en sur sous lez les'.split(' '));
-const GENW=new Set('eglise chapelle chateau musee parc jardin jardins abbaye saint sainte st ste notre dame manoir moulin site point vue tour fort ruines ancien ancienne vieux vieille maison place square domaine'.split(' '));
+const GENW=new Set('menhir menhirs dolmen tumulus cairn megalithe croix calvaire eglise chapelle chateau musee parc jardin jardins abbaye saint sainte st ste notre dame manoir moulin site point vue tour fort ruines ancien ancienne vieux vieille maison place square domaine'.split(' '));
 const ptoks=s=>norm(s).replace(/[^a-z0-9]+/g,' ').split(' ').filter(w=>w&&!STOPW.has(w));
-const famOf=x=>{const t=norm(x.title+' '+(x.sub||''));return/eglise|chapelle|abbaye|cathedrale|basilique|prieure|religieux|culte|monastere|couvent/.test(t)?'rel':/chateau|manoir|donjon|forteresse|\bfort\b/.test(t)?'cas':/musee|galerie|interpretation/.test(t)?'mus':/parc|jardin|vue|naturel|foret|lac|etang/.test(t)?'nat':'oth'};
+const famOf=x=>{const t=norm(x.title+' '+(x.sub||''));return/menhir|dolmen|megalith|allee couverte|tumulus|cairn|cromlech|alignement/.test(t)?'meg':/eglise|chapelle|abbaye|cathedrale|basilique|prieure|religieux|culte|monastere|couvent/.test(t)?'rel':/chateau|manoir|donjon|forteresse|\bfort\b/.test(t)?'cas':/musee|galerie|interpretation/.test(t)?'mus':/parc|jardin|vue|naturel|foret|lac|etang/.test(t)?'nat':'oth'};
 const nearSame=(a,b)=>{
  if(a.wikidata&&b.wikidata)return a.wikidata===b.wikidata;
  if(a.wikiTitle&&b.wikiTitle&&norm(a.wikiTitle)===norm(b.wikiTitle))return true;
  const d=hav(a.lat,a.lon,b.lat,b.lon);if(d>2)return false;
- const ta=ptoks(a.title),tb=ptoks(b.title);if(ta.join(' ')===tb.join(' '))return true;
- if(d>.45)return false;
+ const ta=a._t||(a._t=ptoks(a.title)),tb=b._t||(b._t=ptoks(b.title));if(ta.join(' ')===tb.join(' '))return true;
  const da=ta.filter(w=>!GENW.has(w)),db=tb.filter(w=>!GENW.has(w));
+ if(d<1.5&&da.length&&da.join(' ')===db.join(' ')&&(famOf(a)===famOf(b)||famOf(a)==='oth'||famOf(b)==='oth'))return true;
+ if(d>.45)return false;
  if(da.length&&db.length){const sb=new Set(db),inter=da.filter(w=>sb.has(w)).length;if(inter/Math.min(da.length,db.length)>=.6)return true}
  const fa=famOf(a),fb=famOf(b);
  if((!da.length||!db.length)&&fa===fb&&fa!=='oth'&&d<.15)return true;
  return d<.05&&fa===fb};
 const JUNK=/^(calvaire|croix|monument aux morts|stele|plaque|oratoire|statue|borne|puits|lavoir|fontaine|cimetiere|tombe)\b/;
+/* Grille spatiale : on ne compare que les voisins proches (doublons en quelques millisecondes, même à 100 km) */
+function gridDedupe(list,same,merge){
+ const cells=new Map(),out=[];
+ for(const x of list){
+  const gi=Math.floor(x.lat/.02),gj=Math.floor(x.lon/.03);let ex=null;
+  for(let di=-1;di<=1&&!ex;di++)for(let dj=-1;dj<=1&&!ex;dj++){const c=cells.get((gi+di)+'|'+(gj+dj));if(c)ex=c.find(y=>same(y,x))||null}
+  if(ex){merge(ex,x);continue}
+  const k=gi+'|'+gj;if(!cells.has(k))cells.set(k,[]);cells.get(k).push(x);out.push(x)}
+ return out}
+const OVP=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+async function overpass(q,ms){let last;for(const u of OVP){try{return await jfetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:'data='+encodeURIComponent(q)},ms)}catch(e){last=e}}throw last}
+const OSMCAT={viewpoint:'nature',park:'nature',garden:'nature',nature_reserve:'nature',beach:'nature',waterfall:'nature',cave_entrance:'nature',peak:'nature',
+ zoo:'famille',aquarium:'famille',theme_park:'famille',water_park:'famille',miniature_golf:'famille',bowling_alley:'famille',escape_game:'famille',amusement_arcade:'famille',playground:'famille',
+ theatre:'spectacle',cinema:'spectacle',arts_centre:'spectacle',marketplace:'gastro',
+ sports_centre:'sport',swimming_pool:'sport',golf_course:'sport',ice_rink:'sport',stadium:'sport',horse_riding:'sport',climbing:'sport'};
 async function fetchOsm(p){
  const r=Math.round(S.radius*1000),c=`(around:${r},${p.lat},${p.lon})`;
- const ex=(S.who==='access'||S.accessible)?`nwr${c}[name][wheelchair~"^(yes|designated)$"][~"^(amenity|leisure|tourism|historic)$"~"^(museum|attraction|viewpoint|gallery|zoo|castle|monument|memorial|church|chapel|theatre|arts_centre|cinema|library|park|garden|nature_reserve|community_centre|place_of_worship)$"];nwr${c}[name][~"^(hearing_loop|tactile_paving|tactile_writing|tactile_map)$"~"^yes$"];`:'';
- const K='[~"^(wikidata|wikipedia|heritage|ref:mhs|website|contact:website|opening_hours)$"~"."]';
- const q=`[out:json][timeout:25];(nwr${c}[name][tourism~"^(museum|zoo|theme_park|gallery|viewpoint)$"];nwr${c}[name][tourism=attraction]${K};nwr${c}[name][historic~"^(castle|monument|ruins|archaeological_site|manor|church|chapel|fort|city_gate|citywalls|tower|mill|lighthouse|abbey|monastery)$"]${K};nwr${c}[name][amenity=place_of_worship][~"^(heritage|ref:mhs|wikidata)$"~"."];${ex});out tags center 200;`;
- const j=await jfetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:'data='+encodeURIComponent(q)},16000);
+ const K='[~"^(wikidata|wikipedia|heritage|ref:mhs|website|contact:website|opening_hours)$"~"."]',NP='[access!~"^(private|no|customers|permit)$"]';
+ const q=`[out:json][timeout:90];(
+nwr${c}[name][tourism~"^(museum|gallery|zoo|aquarium|theme_park|viewpoint)$"];
+nwr${c}[name][tourism=attraction]${K};
+nwr${c}[name][historic~"^(church|chapel|archaeological_site|ruins|fort|city_gate|citywalls|lighthouse|abbey|monastery|tower|mill|megalith|tumulus)$"]${NP};
+nwr${c}[name][historic~"^(castle|manor|monument|building)$"]${K};
+nwr${c}[name][amenity=place_of_worship]${NP};
+nwr${c}[name][amenity~"^(marketplace|theatre|cinema|arts_centre)$"];
+nwr${c}[name][leisure~"^(park|nature_reserve|garden|sports_centre|swimming_pool|golf_course|ice_rink|water_park|stadium|miniature_golf|bowling_alley|escape_game|amusement_arcade|horse_riding|climbing|playground)$"]${NP};
+nwr${c}[name][natural~"^(beach|cave_entrance|peak)$"];
+nwr${c}[name][waterway=waterfall];
+);out tags center 6000;`;
+ const j=await overpass(q,60000);
  return(j.elements||[]).map(e=>{
   const t=e.tags||{},lat=e.lat||(e.center&&e.center.lat),lon=e.lon||(e.center&&e.center.lon);if(!lat||!lon||!t.name)return null;
-  let cat='patrimoine';if(t.tourism==='viewpoint'||/^(park|garden|nature_reserve)$/.test(t.leisure||''))cat='nature';else if(t.tourism==='zoo'||t.tourism==='theme_park')cat='famille';else if(t.amenity==='theatre'||t.amenity==='cinema')cat='spectacle';
-  let sub=TYPES[t.tourism]||TYPES[t.historic]||TYPES[t.amenity]||TYPES[t.leisure]||(t.building==='chapel'?'Chapelle':t.building==='church'?'Église':t.amenity==='place_of_worship'?'Lieu de culte':'Site patrimonial');
+  const key=[t.tourism,t.historic,t.amenity,t.leisure,t.natural,t.waterway].find(v=>v&&(TYPES[v]||OSMCAT[v]))||'';
+  const cat=OSMCAT[key]||'patrimoine';
+  let sub=TYPES[key]||(t.building==='chapel'?'Chapelle':t.building==='church'?'Église':t.amenity==='place_of_worship'?'Lieu de culte':'Site patrimonial');
+  if(t.amenity==='place_of_worship'&&/chapelle/i.test(t.name))sub='Chapelle';else if(t.amenity==='place_of_worship'&&/^(eglise|basilique|cathedrale|abbatiale|collegiale)/.test(norm(t.name)))sub=norm(t.name).startsWith('basilique')?'Basilique':norm(t.name).startsWith('cathedrale')?'Cathédrale':'Église';
   const mh=!!(t['ref:mhs']||t['heritage:operator']==='mhs'||/mhs|monuments/i.test(t['heritage:operator']||''));
   const pr=t.fee==='no'?{p:0,l:'Gratuit'}:parsePrice(t.charge||'');
   const wt=/^fr:/.test(t.wikipedia||'')?t.wikipedia.slice(3):'';
   const ax=(t.access||'').toLowerCase();
   return{id:'o'+e.type+e.id,kind:'place',title:t.name,sub,mh,access:ax,open:!!(t.tourism||t.opening_hours||(t.fee&&t.fee!=='')||t.website||t['contact:website']||/^(yes|permissive|public|destination)$/.test(ax)),wikiTitle:wt,wheel:t.wheelchair||'',acc:osmAcc(t),wikidata:t.wikidata||'',startDate:t.start_date||'',desc:sub+(t['addr:city']?' à '+t['addr:city']:''),cats:[cat],cat,lat,lon,km:hav(p.lat,p.lon,lat,lon),ang:bearing(p.lat,p.lon,lat,lon),
    dateLabel:t.opening_hours?'Horaires : '+t.opening_hours.slice(0,60):'Lieu permanent',venue:t['addr:city']||'',city:t['addr:city']||'',price:pr.p,priceLabel:pr.l==='Prix non précisé'?'Accès selon lieu':pr.l,image:'',url:t.website||t['contact:website']||''}
- }).filter(Boolean).filter(x=>x.km<=S.radius+.5&&(x.mh||!JUNK.test(norm(x.title))));
+ }).filter(Boolean).filter(x=>x.km<=S.radius+.3&&(x.mh||!JUNK.test(norm(x.title))));
 }
-async function fetchWikiGeo(p){
- const rad=Math.min(S.radius,10)*1000;
- const j=await jfetch(wq({action:'query',generator:'geosearch',ggscoord:p.lat+'|'+p.lon,ggsradius:rad,ggslimit:60,prop:'pageimages|extracts|coordinates',piprop:'thumbnail',pithumbsize:520,exintro:1,explaintext:1,exchars:220,exlimit:20,colimit:60}),null,9000);
- const pg=Object.values((j.query&&j.query.pages)||{});
- return pg.filter(x=>x.coordinates&&HRX.test(x.title)).map(x=>{const c=x.coordinates[0];const m=x.title.match(HRX);const sub=m?m[0].trim().replace(/^./,s=>s.toUpperCase()):'Site patrimonial';
-  return{id:'w'+x.pageid,kind:'place',title:x.title,sub,mh:false,wikiTitle:x.title,wikidata:'',startDate:'',desc:clean(x.extract||sub),cats:['patrimoine'],cat:'patrimoine',lat:c.lat,lon:c.lon,km:hav(p.lat,p.lon,c.lat,c.lon),ang:bearing(p.lat,p.lon,c.lat,c.lon),
-   dateLabel:'Lieu permanent',venue:'',city:'',price:null,priceLabel:'Accès selon lieu',image:(x.thumbnail&&x.thumbnail.source)||'',url:''}}).filter(x=>x.km<=S.radius+.5);
+/* Tous les lieux ayant un article Wikipédia (via Wikidata), découpés en carrés interrogés en parallèle */
+const WD_HARD=new Set('Q484170 Q21869758 Q18524218 Q184188 Q194203 Q55488 Q4022 Q47521 Q355304 Q532 Q5084 Q486972 Q181307 Q32964842 Q19953632 Q3914 Q9826 Q159334 Q847027 Q3918 Q3551775 Q2511322 Q1459186 Q20860083 Q43229 Q4830453 Q783794 Q178561 Q650711 Q188055 Q5 Q79007 Q34442 Q83620 Q54114 Q7543083 Q207934 Q16544740 Q1248784 Q94993988 Q62447 Q695850 Q1068623 Q31728 Q209465 Q2659904 Q327333 Q7278 Q13406463 Q4167410 Q41793764 Q18608583 Q167903 Q515 Q3957 Q1549591 Q6465 Q36784 Q728937 Q928830 Q55678 Q18615527 Q16917 Q1664720 Q135436 Q2120466 Q15284 Q1021645 Q1244442 Q125941113 Q123705 Q19593666 Q108921116 Q1479822 Q3593625 Q27686 Q11707 Q11315 Q483242 Q1137809 Q868557 Q132241 Q3253281 Q1311958 Q12819564 Q2074737 Q1802963'.split(' '));
+const WD_SOFT=new Set('Q3947 Q11755959 Q41176 Q1365179 Q3950 Q607241 Q39614 Q2309609 Q15072800 Q371752 Q17172602 Q1630387 Q483453 Q860861 Q179700 Q174782 Q537127 Q1210334 Q12280 Q3840711 Q828909'.split(' '));
+const GENERIC_CLS=/^(batiment|edifice|structure architecturale|equipement|installation|monument historique inscrit|monument historique classe|bien culturel)$/;
+function wdCat(l){const t=norm(l);
+ if(/zoo|aquarium|parc d.attraction|parc de loisirs|parc a theme|parc aquatique/.test(t))return'famille';
+ if(/theatre|cinema|salle de spectacle|opera|salle de concert|auditorium|espace evenementiel/.test(t))return'spectacle';
+ if(/installation sportive|stade|hippodrome|piscine|golf|patinoire|circuit|velodrome|base nautique|centre equestre/.test(t))return'sport';
+ if(/halle|marche couvert|ferme|vignoble|brasserie|cidrerie|distillerie/.test(t))return'gastro';
+ if(/foret|bois|parc|jardin|lac|etang|plage|\bile\b|ilot|cap|baie|marais|marecage|reserve|natura|aire protegee|cascade|vallee|colline|mont|grotte|dune|pointe|rocher|falaise|cluse|canal|estuaire|arbre|tourbiere|lande|site naturel|gorge/.test(t))return'nature';
+ return'patrimoine'}
+async function fetchWikidata(p){
+ const R=S.radius,dy=R/111,dx=R/(111*Math.cos(p.lat*Math.PI/180)),n=R<=15?1:R<=55?2:3;
+ const tiles=[];for(let i=0;i<n;i++)for(let j=0;j<n;j++)tiles.push([p.lon-dx+2*dx*j/n,p.lat-dy+2*dy*i/n,p.lon-dx+2*dx*(j+1)/n,p.lat-dy+2*dy*(i+1)/n]);
+ const q=b=>`SELECT ?item ?itemLabel ?coord ?art ?cls ?clsLabel ?mh ?img ?site WHERE {SERVICE wikibase:box {?item wdt:P625 ?coord . bd:serviceParam wikibase:cornerSouthWest "Point(${b[0].toFixed(4)} ${b[1].toFixed(4)})"^^geo:wktLiteral . bd:serviceParam wikibase:cornerNorthEast "Point(${b[2].toFixed(4)} ${b[3].toFixed(4)})"^^geo:wktLiteral .}
+ ?art schema:about ?item ; schema:isPartOf <https://fr.wikipedia.org/> . OPTIONAL{?item wdt:P31 ?cls} OPTIONAL{?item wdt:P1435 ?mh} OPTIONAL{?item wdt:P18 ?img} OPTIONAL{?item wdt:P856 ?site}
+ SERVICE wikibase:label { bd:serviceParam wikibase:language "fr". }}`;
+ const rows=[];let ok=0;
+ for(let k=0;k<tiles.length;k+=4){const r=await Promise.allSettled(tiles.slice(k,k+4).map(b=>jfetch('https://query.wikidata.org/sparql?format=json&query='+encodeURIComponent(q(b)),{headers:{'Accept':'application/sparql-results+json'}},40000)));
+  r.forEach(x=>{if(x.status==='fulfilled'){ok++;rows.push(...((x.value.results||{}).bindings||[]))}})}
+ if(!ok)throw new Error('wikidata');
+ const by=new Map();
+ for(const b of rows){const id=b.item.value.split('/').pop();let o=by.get(id);
+  if(!o){const m=/Point\(([-\d.]+) ([-\d.]+)\)/.exec(b.coord.value);if(!m)continue;
+   o={id,label:(b.itemLabel||{}).value||'',lon:+m[1],lat:+m[2],art:b.art.value,cls:new Map(),mh:false,img:'',site:''};by.set(id,o)}
+  if(b.cls){o.cls.set(b.cls.value.split('/').pop(),(b.clsLabel||{}).value||'')}
+  if(b.mh)o.mh=true;if(b.img&&!o.img)o.img=b.img.value;if(b.site&&!o.site)o.site=b.site.value}
+ const out=[];
+ for(const o of by.values()){
+  if(/%[0-9A-F]{2}/i.test(o.label)){try{o.label=decodeURIComponent(o.label)}catch(e){}}
+  if(!o.label||/^Q\d+$/.test(o.label))continue;
+  const ids=[...o.cls.keys()];
+  if(ids.some(c=>WD_HARD.has(c)))continue;
+  if(!o.mh&&ids.some(c=>WD_SOFT.has(c)))continue;
+  const km=hav(p.lat,p.lon,o.lat,o.lon);if(km>S.radius+.3)continue;
+  const labs=[...o.cls.values()].filter(l=>l&&!/^Q\d+$/.test(l));
+  const lab=labs.find(l=>!GENERIC_CLS.test(norm(l)))||labs[0]||'Site référencé sur Wikipédia';
+  const sub=lab.charAt(0).toUpperCase()+lab.slice(1);const cat=wdCat(labs.join(' ')||lab);
+  const title=decodeURIComponent(o.art.split('/wiki/')[1]||'').replace(/_/g,' ');
+  const img=o.img?o.img.replace(/^http:/,'https:')+'?width=520':'';
+  out.push({id:'q'+o.id,kind:'place',src:'wd',title:o.label.charAt(0).toUpperCase()+o.label.slice(1),sub,mh:o.mh,access:'',open:/musee|parc|jardin|foret|site archeolog|menhir|dolmen|eglise|chapelle|abbaye|basilique|cathedrale|plage|lac/.test(norm(labs.join(' ')))||(!!o.site&&!PRIV_RX.test(norm(o.label+' '+labs.join(' ')))),
+   wikiTitle:title,wheel:'',acc:[],wikidata:o.id,startDate:'',desc:sub,cats:[cat],cat,lat:o.lat,lon:o.lon,km,ang:bearing(p.lat,p.lon,o.lat,o.lon),
+   dateLabel:'Lieu permanent',venue:'',city:'',price:null,priceLabel:'Accès selon lieu',image:img,url:o.site||o.art})}
+ return out;
+}
+/* Sentiers de randonnée balisés (OpenStreetMap) : distance jusqu'au point du sentier le plus proche */
+async function fetchTrails(p){
+ const r=Math.round(S.radius*1000);
+ const j=await overpass(`[out:json][timeout:60];rel(around:${r},${p.lat},${p.lon})[route~"^(hiking|foot|walking)$"][name];out tags center 800;`,45000);
+ let tr=(j.elements||[]).filter(e=>e.center&&e.tags&&e.tags.name).map(e=>{const t=e.tags;return{e,t,ck:hav(p.lat,p.lon,e.center.lat,e.center.lon)}});
+ tr.sort((a,b)=>a.ck-b.ck);
+ /* géométrie limitée au secteur (30 km max) pour trouver l'accès le plus proche */
+ const g=Math.min(S.radius,30),dy=g/111,dx=g/(111*Math.cos(p.lat*Math.PI/180));
+ const bb=`${(p.lat-dy).toFixed(4)},${(p.lon-dx).toFixed(4)},${(p.lat+dy).toFixed(4)},${(p.lon+dx).toFixed(4)}`;
+ const near={};
+ const ids=tr.slice(0,150).map(x=>x.e.id);
+ for(let k=0;k<ids.length;k+=50){try{const gj=await overpass(`[out:json][timeout:60];rel(id:${ids.slice(k,k+50).join(',')});out geom(${bb});`,45000);
+  (gj.elements||[]).forEach(el=>{let best=null;(el.members||[]).forEach(m=>(m.geometry||[]).forEach(pt=>{if(!pt)return;const d=hav(p.lat,p.lon,pt.lat,pt.lon);if(!best||d<best.d)best={d,lat:pt.lat,lon:pt.lon}}));if(best)near[el.id]=best})}catch(e){}}
+ return tr.map(({e,t,ck})=>{const n=near[e.id];const lat=n?n.lat:e.center.lat,lon=n?n.lon:e.center.lon;const km=n?n.d:ck;
+  const net={iwn:'GR international',nwn:'GR (grande randonnée)',rwn:'GR de pays',lwn:'Sentier local'}[t.network]||'Sentier balisé';
+  const len=t.distance?(' · '+String(t.distance).replace('.',',')+(/km/.test(t.distance)?'':' km')):'';
+  const bits=[t.from&&t.to?'De '+t.from+' à '+t.to:'',t.description||'',t.symbol||''].filter(Boolean).join('. ');
+  return{id:'t'+e.id,kind:'place',trail:true,title:t.name,sub:'Randonnée · '+net+len,mh:false,access:'',open:true,wikiTitle:/^fr:/.test(t.wikipedia||'')?t.wikipedia.slice(3):'',wheel:'',acc:[],wikidata:t.wikidata||'',startDate:'',
+   desc:(bits||net+(len?len.replace(' · ',', '):'')).slice(0,240),cats:['nature'],cat:'nature',lat,lon,km,ang:bearing(p.lat,p.lon,lat,lon),approx:!n,
+   dateLabel:n?'Accès au sentier le plus proche':'Sentier (tracé proche du secteur)',venue:'',city:'',price:0,priceLabel:'Gratuit',image:'',url:t.website||'https://www.openstreetmap.org/relation/'+e.id}}).filter(x=>x.km<=S.radius+.3);
 }
 async function enrichWiki(items){
  const withT=items.filter(x=>x.wikiTitle&&(!x.image||x.desc.length<60));
@@ -786,23 +880,12 @@ function mergePlace(ex,x){
  if(/^(private|no)$/.test(x.access||'')&&ex.src!=='dt')ex.access=x.access;
  if(ex.desc.length<60&&x.desc&&x.desc.length>ex.desc.length)ex.desc=x.desc;
 }
-async function fetchPlaces(p){
- const [d,o,w]=await Promise.allSettled([fetchDTPlaces(p),fetchOsm(p),fetchWikiGeo(p)]);
- if(d.status==='rejected'&&o.status==='rejected'&&w.status==='rejected')throw new Error('places');
- const dt=d.status==='fulfilled'?d.value:[],osm=o.status==='fulfilled'?o.value:[],wiki=w.status==='fulfilled'?w.value:[];
- const all=[];const add=x=>{const ex=all.find(y=>nearSame(x,y));if(ex){mergePlace(ex,x);return true}all.push(x);return false};
- dt.sort((a,b)=>b.desc.length-a.desc.length).forEach(add);
- osm.sort((a,b)=>(b.mh-a.mh)||((b.wikidata?1:0)-(a.wikidata?1:0))).forEach(add);
- /* Wikipédia n'ajoute pas de lieu : il complète une fiche existante (histoire, photo).
-    Seule exception : aucune autre source n'a répondu, et seulement pour les édifices religieux, musées et sites archéologiques. */
- const fallback=!dt.length&&o.status!=='fulfilled';
- wiki.forEach(x=>{const ex=all.find(y=>nearSame(x,y));if(ex){mergePlace(ex,x);return}
-  if(fallback&&/eglise|chapelle|abbaye|cathedrale|basilique|musee|archeolog|menhir|dolmen|alignement/.test(norm(x.title)))all.push(x)});
- const kept=all.filter(publicOK);
- kept.sort((a,b)=>((a.mh?0:a.src==='dt'?1:a.wikiTitle?2:3)-(b.mh?0:b.src==='dt'?1:b.wikiTitle?2:3))||a.km-b.km);
- const top=kept.slice(0,90);
- await enrichWiki(top);
- return top;
+function buildPlaces(dt,osm,wd,trails){
+ const same=(a,b)=>nearSame(a,b),mg=(a,b)=>mergePlace(a,b);
+ const list=[].concat(dt.slice().sort((a,b)=>b.desc.length-a.desc.length),osm.slice().sort((a,b)=>(b.mh-a.mh)||((b.wikidata?1:0)-(a.wikidata?1:0))),wd.slice().sort((a,b)=>(b.mh-a.mh)));
+ const places=gridDedupe(list,same,mg).filter(publicOK);
+ const tr=gridDedupe(trails,(a,b)=>norm(a.title)===norm(b.title)||(a.wikidata&&a.wikidata===b.wikidata),()=>{});
+ return places.concat(tr);
 }
 const WMO=c=>c===0?['Ciel dégagé','sun']:c<=2?['Éclaircies','sun']:c===3?['Couvert','cloud']:c<=48?['Brume','cloud']:c<=57?['Bruine','rain']:c<=67?['Pluie','rain']:c<=77?['Neige','cloud']:c<=82?['Averses','rain']:['Orage','rain'];
 async function fetchWeather(p,per){
@@ -864,11 +947,7 @@ function evSame(o,x){
  return Math.abs(new Date(o.start)-new Date(x.start))<36*36e5;
 }
 function mergeEvents(a,b){
- const out=[];
- a.concat(b).forEach(x=>{const o=out.find(y=>evSame(y,x));
-  if(o){if(!o.image&&x.image)o.image=x.image;if(!o.url&&x.url)o.url=x.url;if(!o.by&&x.by){o.by=x.by;o.upd=x.upd}if((o.desc||'').length<(x.desc||'').length&&(o.desc||'').length<80)o.desc=x.desc;return}
-  out.push(x)});
- return out;
+ return gridDedupe(a.concat(b),evSame,(o,x)=>{if(!o.image&&x.image)o.image=x.image;if(!o.url&&x.url)o.url=x.url;if(!o.by&&x.by){o.by=x.by;o.upd=x.upd}if((o.desc||'').length<(x.desc||'').length&&(o.desc||'').length<80)o.desc=x.desc});
 }
 
 /* ---------- lieux signalés : exclusions confirmées (serveur) + masqués localement ---------- */
@@ -879,21 +958,44 @@ const REPORT_URL='https://hook.eu1.make.com/j0kueqg3wvo2xuetbzcng7cc4ngn74db';
 
 /* ---------- recherche ---------- */
 let seq=0;
+/* Distance et temps par la route (OSRM, gratuit) pour les résultats affichés */
+async function roadFor(list){
+ const p=S.place;const need=list.filter(x=>x.road==null&&!x._rq&&x.lat!=null).slice(0,300);if(!need.length)return false;
+ need.forEach(x=>x._rq=1);let changed=false;
+ for(let i=0;i<need.length;i+=90){const ch=need.slice(i,i+90);
+  try{const c=[p.lon.toFixed(5)+','+p.lat.toFixed(5)].concat(ch.map(x=>x.lon.toFixed(5)+','+x.lat.toFixed(5))).join(';');
+   const j=await jfetch('https://router.project-osrm.org/table/v1/driving/'+c+'?sources=0&annotations=distance,duration',null,15000);
+   if(j.code!=='Ok'){ch.forEach(x=>x._rq=0);continue}
+   ch.forEach((x,k)=>{const d=j.distances[0][k+1],t=j.durations[0][k+1];if(d!=null&&isFinite(d)){x.road=Math.max(d/1000,x.km);x.dur=Math.max(1,Math.round(t/60));changed=true}})}
+  catch(e){ch.forEach(x=>x._rq=0)}}
+ return changed}
+async function roadRefresh(my){const shown=visible().slice(0,S.limit);if(await roadFor(shown)&&my===seq&&S.mode==='ready')render()}
 async function search(){
  if(!S.place){const q=inp.value.trim();
   if(!q){$('#err').textContent='Indiquez un lieu pour lancer la recherche.';inp.focus();return}
   const r=await geocode(q);if(!r.length){$('#err').textContent='Lieu introuvable. Essayez le nom d’une commune proche.';return}pick(r[0]);}
- const my=++seq,p=S.place,per=period();S.period=per;S.mode='loading';S.hiddenNoPrice=0;S.includeNoPrice=false;S.showAllWho=false;S.includeNoAccess=false;S.favOnly=false;$('#favBtn').setAttribute('aria-pressed','false');
+ const my=++seq,p=S.place,per=period();S.period=per;S.mode='loading';S.limit=60;S.hiddenNoPrice=0;S.includeNoPrice=false;S.showAllWho=false;S.includeNoAccess=false;S.favOnly=false;$('#favBtn').setAttribute('aria-pressed','false');
  $('#go').disabled=true;renderLoading();
- const [ev,pl,wx,dt]=await Promise.allSettled([fetchEvents(p,per),fetchPlaces(p),fetchWeather(p,per),fetchDT(p,per)]);
+ /* sources lentes lancées tout de suite, fusionnées quand elles arrivent */
+ const slow=Promise.allSettled([fetchOsm(p),fetchWikidata(p),fetchTrails(p)]);
+ const [ev,dp,wx,dt]=await Promise.allSettled([fetchEvents(p,per),fetchDTPlaces(p),fetchWeather(p,per),fetchDT(p,per)]);
  if(my!==seq)return;$('#go').disabled=false;
  S.wx=wx.status==='fulfilled'?wx.value:[];
  const evs=mergeEvents(ev.status==='fulfilled'?ev.value:[],dt.status==='fulfilled'?dt.value:[]);
  const excl=await loadExcl();const keep=x=>!excl.has(x.id)&&!localHidden.has(x.id);
- if(ev.status==='fulfilled'||(dt.status==='fulfilled'&&dt.value.length)){S.items=evs.concat(pl.status==='fulfilled'?pl.value:[]).filter(keep);S.mode='ready';S.live=true;S.placesOk=pl.status==='fulfilled'}
- else{S.items=demoItems(p);S.mode='ready';S.live=false}
- S.aiIdeas=null;S.route=null;render();
- const r=$('#results');if(S.noScroll){S.noScroll=false;return}r.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});
+ const dtp=dp.status==='fulfilled'?dp.value:[];
+ S.evs=evs;S.loadingMore=true;
+ S.items=evs.concat(buildPlaces(dtp,[],[],[])).filter(keep);S.mode='ready';S.live=true;
+ S.aiIdeas=null;S.route=null;render();roadRefresh(my);
+ const r=$('#results');if(!S.noScroll)r.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});S.noScroll=false;
+ const [o,w,t]=await slow;if(my!==seq)return;
+ const osm=o.status==='fulfilled'?o.value:[],wd=w.status==='fulfilled'?w.value:[],tr=t.status==='fulfilled'?t.value:[];
+ const pl=buildPlaces(dtp,osm,wd,tr);
+ enrichWiki(pl.filter(x=>x.wikiTitle).sort((a,b)=>a.km-b.km).slice(0,80)).then(()=>{if(my===seq&&S.mode==='ready')render()});
+ S.placesOk=o.status==='fulfilled'||w.status==='fulfilled';S.loadingMore=false;
+ S.srcErr=[o.status!=='fulfilled'?'OpenStreetMap':'',w.status!=='fulfilled'?'Wikipédia':'',t.status!=='fulfilled'?'sentiers':''].filter(Boolean);
+ if(!evs.length&&!pl.length){S.items=demoItems(p);S.live=false;render();return}
+ S.items=evs.concat(pl).filter(keep);render();roadRefresh(my);
 }
 $('#form').addEventListener('submit',e=>{e.preventDefault();search()});
 
@@ -901,7 +1003,7 @@ $('#form').addEventListener('submit',e=>{e.preventDefault();search()});
 function visible(){
  let a=S.items.slice();
  if(S.favOnly)a=a.filter(x=>S.favs.has(x.id));
- if(S.kind==='event')a=a.filter(x=>x.kind!=='place');if(S.kind==='place')a=a.filter(x=>x.kind==='place');
+ if(S.kind==='event')a=a.filter(x=>x.kind!=='place');if(S.kind==='place')a=a.filter(x=>x.kind==='place'&&!x.trail);if(S.kind==='trail')a=a.filter(x=>x.trail);
  if(S.coll.size)a=a.filter(x=>[...S.coll].some(c=>inColl(x,c)));
  if(S.cats.size)a=a.filter(x=>x.cats.some(c=>S.cats.has(c)));
  S.hiddenNoPrice=0;
@@ -915,7 +1017,8 @@ function visible(){
  else if(S.accessible)a=a.filter(x=>{if(accOK(x,'motor')||S.includeNoAccess)return true;S.hiddenNoAccess++;return false});
  if(S.indoor)a=a.filter(isIndoor);
  const sc=x=>-(x._f.score||0)*.9+(x.kind==='place'?(x.mh?-1.5:x.wikiTitle?.2:1.4):0)+Math.min(x.span||0,120)/30+(x.image?-1:0)+x.km/10+(x.price===0?-.5:0);
- if(S.sort==='km')a.sort((x,y)=>x.km-y.km);else if(S.sort==='date')a.sort((x,y)=>(x.start||'9')>(y.start||'9')?1:-1);else a.sort((x,y)=>sc(x)-sc(y));
+ const dk=x=>x.road!=null?x.road:x.km*1.3;
+ if(S.sort==='km')a.sort((x,y)=>dk(x)-dk(y)||x.km-y.km);else if(S.sort==='date')a.sort((x,y)=>(x.start||'9')>(y.start||'9')?1:-1);else a.sort((x,y)=>sc(x)-sc(y));
  return a;
 }
 
@@ -932,9 +1035,14 @@ function thumb(x,i){
  if(x.image)return`<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">`;
  const y1=86+((i*13)%22),y2=110+((i*7)%16),sx=34+((i*29)%84),sy=30+(i%3)*9;
  return`<svg viewBox="0 0 150 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="g${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".22"/><stop offset=".7" stop-color="#f7e6bf" stop-opacity=".9"/><stop offset="1" stop-color="#fdf6e4"/></linearGradient><radialGradient id="s${i}"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><rect width="150" height="150" fill="url(#g${i})"/><circle cx="${sx}" cy="${sy}" r="34" fill="url(#s${i})"/><circle cx="${sx}" cy="${sy}" r="11" fill="#fff" opacity=".9"/><path d="M0 ${y1}Q40 ${y1-30} 80 ${y1-6}T150 ${y1-14}V150H0z" fill="${c}" opacity=".32"/><path d="M0 ${y2-10}Q50 ${y2-34} 100 ${y2-12}T150 ${y2-20}V150H0z" fill="${c}" opacity=".55"/><path d="M0 ${y2+6}Q50 ${y2-18} 100 ${y2+2}T150 ${y2-8}V150H0z" fill="${c}"/></svg>`}
+const f1=v=>v<10?v.toFixed(1).replace('.',','):String(Math.round(v));
+const durTxt=m=>m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0');
+function distTxt(x){const pre=x.trail?'Accès à ':'';
+ if(x.road!=null)return`${pre}${f1(x.road)} km par la route · ${durTxt(x.dur)} en voiture <small>(${f1(x.km)} km à vol d’oiseau)</small>`;
+ return`${pre}${x.km<.1?'moins de 100 m':f1(x.km)+' km'} <small>à vol d’oiseau</small>`}
 function card(x,i){
  const cat=CAT[x.cat],fav=S.favs.has(x.id);
- const kind=x.kind==='place'?'Lieu permanent':x.kind==='sample'?'Exemple':'Événement';
+ const kind=x.trail?'Randonnée':x.kind==='place'?'Lieu':x.kind==='sample'?'Exemple':'Événement';
  const nav=`https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lon}`;
  const badges=((x.acc&&x.acc.length)?x.acc.map(c=>`<span class="badge">${BADGE[c]}</span>`).join(''):(x.wheel==='yes'?'<span class="badge">Accessible fauteuil</span>':''))+(x.mh?'<span class="badge mh">Monument historique</span>':'')+(x.sub?`<span class="badge">${esc(x.sub)}</span>`:'');
  const sb=x.kind==='sample'?'':`<button type="button" class="story-btn" data-story="${esc(x.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h6"/></svg>${x.kind==='event'&&x.venueName?'Histoire du lieu':'Comprendre ce lieu'}</button>`;
@@ -944,7 +1052,7 @@ function card(x,i){
   <div class="badges"><span class="tag" style="--c:${cat.c}">${cat.label}</span>${badges}</div>
   <h3>${esc(x.title)}</h3>
   ${x._f&&x._f.reason&&x._f.score>=1?`<span class="fit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${esc(x._f.reason)}</span>`:''}
-  <div class="meta"><span>${ICON.cal}${esc(x.dateLabel||'Date à confirmer')}</span><span>${ICON.pin}${x.km<1?'moins de 1':x.km.toFixed(1).replace('.',',')} km${x.venue?' · '+esc(x.venue):''}</span></div>
+  <div class="meta"><span>${ICON.cal}${esc(x.dateLabel||'Date à confirmer')}</span><span class="dist">${ICON.pin}${distTxt(x)}${x.venue?' · '+esc(x.venue):''}</span></div>
   ${x.desc?`<p class="desc">${esc(x.desc)}</p>`:''}
   ${x.by?`<p class="credit">Info ${esc(x.by)}${x.upd?', mise à jour le '+esc(fr(x.upd,{day:'numeric',month:'short',year:'numeric'})):''} · DATAtourisme</p>`:''}
   <div class="foot"><span class="price${x.price===0?' free':''}">${esc(x.priceLabel)}</span>
@@ -970,20 +1078,22 @@ function radar(a){
 function wxHtml(){
  if(!S.wx.length)return'';
  const rainy=S.wx.some(w=>w.rain>=60);
- return`<div class="weather">${S.wx.map(w=>{const[l,i]=WMO(w.code);return`<div class="wx">${ICON[i]}<div><b>${esc(fr(w.d))} · ${esc(l)}</b><span>${w.tmin}° / ${w.tmax}° · pluie ${w.rain}%</span></div></div>`}).join('')}${rainy?`<div class="wx"><div><b>Risque de pluie</b><span>Visites et expositions seront plus confortables.</span>${S.indoor?'':'<button type="button" class="lnk" id="indoorBtn" style="border:0;background:none;cursor:pointer;padding:0;text-align:left">Voir seulement les lieux à l’abri</button>'}</div></div>`:''}</div>`}
+ return`<div class="weather">${S.wx.map(w=>{const[l,i]=WMO(w.code);return`<div class="wx">${ICON[i]}<div><b>${esc(fr(w.d))} · ${esc(l)}</b><span>${w.tmin}° / ${w.tmax}° · pluie ${w.rain}%</span></div></div>`}).join('')}${rainy?`<div class="wx"><div><b>Risque de pluie</b><span>Visites et expositions seront plus confortables.</span></div></div>`:''}</div>`}
 function render(){
  if(S.mode!=='ready')return;
  const a=visible(),per=S.period;
  const ev=S.items.filter(x=>x.kind!=='place').length;
  const view=S.view;
- let h=`<div class="res-head"><div><h2>${a.length?a.length+' idée'+(a.length>1?'s':'')+' autour de '+esc(S.place.name):'Rien de correspondant pour l’instant'}</h2><p>${esc(per.label)} · dans un rayon de ${S.radius} km</p></div>
+ let h=`<div class="res-head"><div><h2>${a.length?a.length+' résultat'+(a.length>1?'s':'')+', du plus proche au plus loin':'Rien de correspondant pour l’instant'}</h2><p>${esc(per.label)} · jusqu’à ${S.radius} km de <b>${esc(S.place.name)}</b> · <a class="lnk" href="https://www.openstreetmap.org/?mlat=${S.place.lat.toFixed(5)}&mlon=${S.place.lon.toFixed(5)}#map=14/${S.place.lat.toFixed(5)}/${S.place.lon.toFixed(5)}" target="_blank" rel="noopener">voir le point de départ</a></p></div>
  <div class="tools">
-  <div class="seg" role="group" aria-label="Type"><button data-kind="all" aria-pressed="${S.kind==='all'}">Tout</button><button data-kind="event" aria-pressed="${S.kind==='event'}">Événements</button><button data-kind="place" aria-pressed="${S.kind==='place'}">Lieux</button></div>
-  <label class="visually-hidden" for="sort">Trier</label><select id="sort"><option value="rel"${S.sort==='rel'?' selected':''}>Pertinence</option><option value="km"${S.sort==='km'?' selected':''}>Distance</option><option value="date"${S.sort==='date'?' selected':''}>Date</option></select>
+  <div class="seg" role="group" aria-label="Type"><button data-kind="all" aria-pressed="${S.kind==='all'}">Tout</button><button data-kind="event" aria-pressed="${S.kind==='event'}">Événements</button><button data-kind="place" aria-pressed="${S.kind==='place'}">Lieux</button><button data-kind="trail" aria-pressed="${S.kind==='trail'}">Randonnées</button></div>
+  <label class="visually-hidden" for="sort">Trier</label><select id="sort"><option value="km"${S.sort==='km'?' selected':''}>Les plus proches</option><option value="date"${S.sort==='date'?' selected':''}>Date</option><option value="rel"${S.sort==='rel'?' selected':''}>Sélection</option></select>
   <div class="seg only-narrow" role="group" aria-label="Affichage"><button data-view="list" aria-pressed="${view==='list'}">Liste</button><button data-view="map" aria-pressed="${view==='map'}">Carte</button></div>
  </div></div>`;
  if(!S.live)h+=`<div class="banner"><span><b>Aperçu de démonstration.</b> Cet environnement bloque l’accès aux sources en ligne : les fiches marquées « Exemple » sont illustratives. Dans la version publiée, la liste vient d’OpenAgenda, d’OpenStreetMap et d’Open-Meteo. Les idées de l’assistant, plus bas, reposent sur des lieux réels.</span></div>`;
  h+=wxHtml();
+ if(S.loadingMore)h+=`<div class="banner"><span>Chargement des sites Wikipédia, des lieux OpenStreetMap et des sentiers de randonnée…</span></div>`;
+ else if(S.srcErr&&S.srcErr.length)h+=`<div class="banner"><span>Source momentanément indisponible : ${esc(S.srcErr.join(', '))}. Relancez la recherche dans un instant pour tout afficher.</span></div>`;
  if(S.hiddenWho)h+=`<div class="banner"><span><b>${S.hiddenWho}</b> résultat${S.hiddenWho>1?'s':''} peu adapté${S.hiddenWho>1?'s':''} à « ${esc(whoLabel())} » ${S.hiddenWho>1?'sont masqués':'est masqué'}. <button type="button" class="lnk" id="showWho" style="border:0;background:none;cursor:pointer">Les afficher</button></span></div>`;
  if(S.who==='access')h+=`<div class="banner"><span><b>Mode accessibilité : ${esc(DLBL[S.disab])}.</b> Seuls les lieux et événements dont l’accessibilité est confirmée s’affichent${S.hiddenAccess?' ('+S.hiddenAccess+' résultat'+(S.hiddenAccess>1?'s':'')+' sans confirmation écarté'+(S.hiddenAccess>1?'s':'')+')':''}. Ces informations viennent des organisateurs et d’OpenStreetMap : appelez le lieu avant de vous déplacer.</span></div>`;
  if(S.hiddenNoAccess)h+=`<div class="banner"><span><b>${S.hiddenNoAccess}</b> résultat${S.hiddenNoAccess>1?'s':''} sans information d’accessibilité ${S.hiddenNoAccess>1?'sont masqués':'est masqué'}. <button type="button" class="lnk" id="showNoAcc" style="border:0;background:none;cursor:pointer">Les afficher</button></span></div>`;
@@ -993,8 +1103,9 @@ function render(){
  if(!a.length){
   h+=`<div class="empty"><h3>On élargit ?</h3><p>${S.favOnly?'Vous n’avez pas encore de favori pour cette recherche.':S.who==='access'?'Aucun lieu ou événement à l’accessibilité confirmée pour ce besoin dans ce rayon. Nous ne montrons rien sans confirmation. Essayez un autre jour, une autre sélection ou un rayon plus large.':'Essayez un autre jour, retirez un filtre de budget ou d’envie, ou cherchez depuis une commune voisine.'}</p><button class="cta" id="resetF">Retirer les filtres</button></div>`;
  }else{
-  h+=`<div class="layout v-${view}"><div class="list">${a.map(card).join('')}</div>
-  <aside class="side"><h3>Autour de vous</h3>${radar(a)}<div class="legend">${CATS.filter(c=>a.some(x=>x.cat===c.id)).map(c=>`<span style="--c:${c.c}"><i></i>${c.label}</span>`).join('')}</div><p class="hint">Chaque point est une idée. Touchez-en un pour le retrouver dans la liste.</p></aside></div>`;
+  const shown=a.slice(0,S.limit),rest=a.length-shown.length;
+  h+=`<div class="layout v-${view}"><div class="list">${shown.map(card).join('')}${rest>0?`<button type="button" class="cta more-btn" id="moreBtn">Afficher ${Math.min(rest,60)} résultats de plus (${rest} restants)</button>`:''}</div>
+  <aside class="side"><h3>Autour de vous</h3>${radar(shown)}<div class="legend">${CATS.filter(c=>a.some(x=>x.cat===c.id)).map(c=>`<span style="--c:${c.c}"><i></i>${c.label}</span>`).join('')}</div><p class="hint">Chaque point est une idée. Touchez-en un pour le retrouver dans la liste.</p></aside></div>`;
  }
  if(S.who!=='access')h+=`<section class="ai" id="ai"><h3>Envie d’autre chose ?</h3><p style="margin:0;color:var(--muted)">L’assistant propose des lieux et activités permanents autour de ${esc(S.place.name)}, selon vos critères.</p><div style="margin-top:12px"><button class="cta" id="aiBtn" hidden>Demander des idées</button></div><div id="aiOut" class="ai-grid"></div></section>`;
  $('#results').innerHTML=h;
@@ -1003,14 +1114,15 @@ function render(){
 }
 $('#results').addEventListener('click',e=>{
  const t=e.target;
- const k=t.closest('[data-kind]');if(k){S.kind=k.dataset.kind;render();return}
+ const k=t.closest('[data-kind]');if(k){S.kind=k.dataset.kind;S.limit=60;render();roadRefresh(seq);return}
+ if(t.closest('#moreBtn')){S.limit+=60;render();roadRefresh(seq);return}
  const v=t.closest('[data-view]');if(v){S.view=v.dataset.view;render();return}
  if(t.closest('#inclNP')){S.includeNoPrice=true;render();return}
  if(t.closest('#resetF')){S.prices.clear();S.cats.clear();S.kind='all';S.favOnly=false;$('#favBtn').setAttribute('aria-pressed','false');drawChips();render();return}
  const f=t.closest('[data-fav]');if(f){const id=f.dataset.fav;S.favs.has(id)?S.favs.delete(id):S.favs.add(id);store.set('alentours.favs',[...S.favs]);favCount();f.setAttribute('aria-pressed',S.favs.has(id));return}
  const d=t.closest('.dotp');if(d){S.hl=d.dataset.id;S.view='list';render();const c=document.getElementById('c-'+CSS.escape(S.hl));if(c)c.scrollIntoView({block:'center',behavior:'smooth'});return}
 });
-$('#results').addEventListener('change',e=>{if(e.target.id==='sort'){S.sort=e.target.value;render()}});
+$('#results').addEventListener('change',e=>{if(e.target.id==='sort'){S.sort=e.target.value;S.limit=60;render();roadRefresh(seq)}});
 function favCount(){$('#favCount').textContent=S.favs.size}
 $('#favBtn').addEventListener('click',e=>{if(S.mode!=='ready'){$('#err').textContent='Lancez d’abord une recherche pour retrouver vos favoris.';return}S.favOnly=!S.favOnly;e.currentTarget.setAttribute('aria-pressed',S.favOnly);render()});
 favCount();
@@ -1247,7 +1359,6 @@ document.addEventListener('click',e=>{const t=e.target;
  if(t.closest('#showNoAcc')){S.includeNoAccess=true;S.route=null;render();return}
  if(t.closest('#indoorBtn')){S.indoor=true;refilter()}
 });
-try{S.who=store.get('alentours.who','')||'';S.kidAge=store.get('alentours.age',6)||6;S.disab=store.get('alentours.disab','motor')||'motor';if(S.who==='kids')S.nStops=3}catch(e){}
 try{if(window.parent&&window.parent!==window){const send=()=>{try{parent.postMessage({type:'alentours-height',h:document.documentElement.scrollHeight},'*')}catch(e){}};if(window.ResizeObserver)new ResizeObserver(send).observe(document.body);addEventListener('load',send);setTimeout(send,600)}}catch(e){}
 drawChips();startScene();
 const PRE=window.ALENTOURS_PRESET;

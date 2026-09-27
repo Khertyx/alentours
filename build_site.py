@@ -66,7 +66,7 @@ def heritage(lat, lon):
 
 def prerender(name, dept, ev, her, s, e):
     parts = [f'<div class="empty" style="text-align:left"><h3>Que faire à {E(name)} ({E(dept)}) ?</h3>']
-    parts.append(f'<p>Alentours réunit les événements, les balades et le patrimoine dans un rayon de 20 km autour de {E(name)}. Aperçu pour le week-end du {s.strftime("%d/%m")} au {e.strftime("%d/%m/%Y")}. Les résultats complets se chargent dans un instant.</p>')
+    parts.append(f'<p>Alentours réunit les événements, les balades et le patrimoine jusqu’à 100 km autour de {E(name)}, du plus proche au plus loin. Aperçu pour le week-end du {s.strftime("%d/%m")} au {e.strftime("%d/%m/%Y")}. Les résultats complets se chargent dans un instant.</p>')
     if ev: parts.append('<h4>Événements à ne pas manquer</h4><ul>' + ''.join(f'<li>{E(r["title_fr"])} ({E(r.get("daterange_fr") or "")}, {E(r.get("location_city") or "")})</li>' for r in ev) + '</ul>')
     if her: parts.append(f'<h4>Patrimoine à découvrir autour de {E(name)}</h4><ul>' + ''.join(f'<li>{E(t)}</li>' for t in her) + '</ul>')
     parts.append('</div>')
@@ -115,17 +115,18 @@ table{border-collapse:collapse;width:100%%;font-size:.95rem}td,th{border-bottom:
 <h1>Confidentialité et mentions légales</h1><small>Dernière mise à jour : %(date)s</small>
 
 <h2>En bref</h2>
-<p>Alentours ne crée pas de compte, n'utilise aucun cookie et ne collecte aucune donnée personnelle sur ses propres serveurs. Vos choix (favoris, groupe, âge des enfants, besoin d'accessibilité) restent dans votre navigateur. Votre position n'est utilisée que si vous cliquez sur « Ma position », et uniquement pour interroger les sources de données ci-dessous.</p>
+<p>Alentours ne crée pas de compte, n'utilise aucun cookie et ne collecte aucune donnée personnelle sur ses propres serveurs. Vos favoris restent dans votre navigateur. Votre position n'est utilisée que si vous cliquez sur « Ma position », et uniquement pour interroger les sources de données ci-dessous.</p>
 
 <h2>Sources de données interrogées depuis votre navigateur</h2>
 <p>Pour afficher les résultats, votre navigateur contacte directement les services ci-dessous. Ils reçoivent, comme pour toute page web, votre adresse IP et la requête envoyée (coordonnées du lieu recherché). Alentours ne reçoit aucune de ces informations.</p>
 <div class="wrap-t"><table><thead><tr><th>Service</th><th>Usage</th></tr></thead><tbody>
 <tr><td>OpenAgenda, via OpenDataSoft</td><td>Événements publics</td></tr>
-<tr><td>OpenStreetMap (Overpass, Nominatim)</td><td>Lieux, accessibilité, recherche d'adresse</td></tr>
-<tr><td>API Adresse (data.gouv.fr)</td><td>Recherche de communes et d'adresses</td></tr>
-<tr><td>Wikipédia et Wikidata (Wikimedia)</td><td>Histoire des lieux, photos, repères</td></tr>
+<tr><td>OpenStreetMap (Overpass, Nominatim)</td><td>Lieux, sentiers de randonnée, accessibilité, recherche d'adresse</td></tr>
+<tr><td>OSRM (Project OSRM)</td><td>Distance et temps de trajet par la route</td></tr>
+<tr><td>Géoplateforme IGN (géocodage, ex-API Adresse)</td><td>Recherche de communes et d'adresses, adresse de votre position</td></tr>
+<tr><td>Wikipédia et Wikidata (Wikimedia)</td><td>Sites référencés sur Wikipédia, histoire des lieux, photos</td></tr>
 <tr><td>Open-Meteo</td><td>Prévisions météo</td></tr>
-<tr><td>DATAtourisme (fichiers servis par ce site)</td><td>Événements des offices de tourisme, mis à jour chaque nuit</td></tr>
+<tr><td>DATAtourisme (fichiers servis par ce site)</td><td>Événements et lieux de visite des offices de tourisme, mis à jour chaque nuit</td></tr>
 </tbody></table></div>
 <p>Les polices de caractères sont hébergées sur ce site : aucun appel à Google Fonts.</p>
 
@@ -158,7 +159,7 @@ NOTFOUND = '''<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta n
 h1{font:600 clamp(2.6rem,8vw,4.4rem)/1 "Cormorant Garamond",Georgia,serif;margin:0 0 10px}a{display:inline-block;margin-top:14px;background:#2c6b56;color:#fff;padding:12px 24px;border-radius:14px;text-decoration:none;font-weight:700}</style></head>
 <body><main><h1>Ce chemin n'existe pas</h1><p>La page demandée est introuvable, mais il y a plein de sorties autour de vous.</p><a href="%(base)s/">Retour à Alentours</a></main></body></html>'''
 
-MANIFEST = {'name': 'Alentours', 'short_name': 'Alentours', 'description': 'Que faire autour de vous : événements, patrimoine et balades dans un rayon de 20 km.',
+MANIFEST = {'name': 'Alentours', 'short_name': 'Alentours', 'description': 'Que faire autour de vous : événements, patrimoine et balades jusqu’à 100 km autour de vous.',
             'lang': 'fr', 'start_url': BASE + '/', 'scope': BASE + '/', 'display': 'standalone', 'background_color': '#f8f7f2', 'theme_color': '#2c6b56',
             'icons': [{'src': BASE + '/assets/favicon.svg', 'sizes': 'any', 'type': 'image/svg+xml', 'purpose': 'any'}]}
 
@@ -211,9 +212,9 @@ def main():
 
     idx = frag.replace('<footer>', nav(BASE + '/commune/') + '<footer>', 1)
     site_ld = ('<script type="application/ld+json">' + json.dumps({'@context': 'https://schema.org', '@type': 'WebApplication', 'name': 'Alentours', 'url': SITE + '/', 'applicationCategory': 'TravelApplication',
-               'inLanguage': 'fr', 'description': "Événements, patrimoine et balades dans un rayon de 20 km.", 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'EUR'},
+               'inLanguage': 'fr', 'description': "Événements, patrimoine et balades jusqu’à 100 km autour de vous.", 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'EUR'},
                'publisher': {'@type': 'Organization', 'name': 'Khertyx', 'url': 'https://www.khertyx.com'}}, ensure_ascii=False) + '</script>')
-    write(os.path.join(OUT, 'index.html'), head('Alentours, que faire autour de vous ?', "Événements, balades, musées et patrimoine dans un rayon de 20 km, aujourd'hui ou ce week-end. Gratuit, sans inscription, sans cookie.", SITE + '/', site_ld) + idx + '</body></html>')
+    write(os.path.join(OUT, 'index.html'), head('Alentours, que faire autour de vous ?', "Événements, balades, musées et patrimoine jusqu'à 100 km, aujourd'hui ou ce week-end. Gratuit, sans inscription, sans cookie.", SITE + '/', site_ld) + idx + '</body></html>')
 
     for name, lat, lon, dept in communes:
         sl = slug(name); url = f'{SITE}/commune/{sl}/'
@@ -236,7 +237,7 @@ def main():
         pg = pg.replace('<footer>', nav('../') + '<footer>', 1)
         preset = '<script>window.ALENTOURS_PRESET=' + json.dumps({'name': name, 'lat': lat, 'lon': lon, 'ctx': dept, 'when': 'weekend'}, ensure_ascii=False) + ';</script>'
         title = f'Que faire à {name} ce week-end ? Sorties, patrimoine, balades'
-        desc = f'Événements, balades et patrimoine à {name} et dans un rayon de 20 km. Programme du week-end, histoire des lieux et parcours du jour.'
+        desc = f'Événements, balades et patrimoine à {name} et jusqu’à 100 km autour de vous. Programme du week-end, histoire des lieux et parcours du jour.'
         write(old, head(title, desc, url, reuse[1] if reuse else jsonld(name, url, ev)) + preset + pg + '</body></html>')
         urls.append(url); print('ok', name, len(ev), 'événements', len(her), 'sites')
 
